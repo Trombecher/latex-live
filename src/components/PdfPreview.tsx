@@ -112,32 +112,47 @@ function PdfPage(props: {
 }
 
 export function PdfPreview(props: PdfPreviewProps) {
+    let paneElement: HTMLDivElement | undefined;
     let scrollContainer: HTMLDivElement | undefined;
 
     const [doc, setDoc] = createSignal<PDFDocumentProxy | null>(null);
     const [pageCount, setPageCount] = createSignal(0);
-    const [viewportWidth, setViewportWidth] = createSignal(0);
+    const [basePageWidth, setBasePageWidth] = createSignal(0);
     const [loadingDocument, setLoadingDocument] = createSignal(false);
     const [loadError, setLoadError] = createSignal<string | null>(null);
 
-    const pageWidth = () => viewportWidth() * props.zoom;
+    const pageWidth = () => basePageWidth() * props.zoom;
 
     onMount(() => {
         const container = scrollContainer;
-        if (!container) {
+        const pane = paneElement;
+        if (!container || !pane) {
             return;
         }
 
-        const updateWidth = () => {
-            setViewportWidth(
-                Math.max(0, container.clientWidth - HORIZONTAL_PADDING),
-            );
-        };
+        // The page size is independent of the pane width, so resizing the
+        // pane only reveals or clips the PDF. Keep the viewport centered on
+        // the same part of the document while the pane changes size.
+        let previousWidth = container.clientWidth;
 
-        updateWidth();
+        const observer = new ResizeObserver(() => {
+            const width = container.clientWidth;
+            if (width === previousWidth) {
+                return;
+            }
 
-        const observer = new ResizeObserver(updateWidth);
-        observer.observe(container);
+            const center = container.scrollLeft + previousWidth / 2;
+            previousWidth = width;
+            container.scrollLeft = center - width / 2;
+
+            // Recover if the pane had no usable width when the document was
+            // loaded.
+            if (basePageWidth() <= 0) {
+                setBasePageWidth(Math.max(0, width - HORIZONTAL_PADDING));
+            }
+        });
+
+        observer.observe(pane);
 
         let zoomFrame = 0;
         let accumulatedFactor = 1;
@@ -375,6 +390,10 @@ export function PdfPreview(props: PdfPreviewProps) {
                     return;
                 }
 
+                const containerWidth = scrollContainer?.clientWidth ?? 0;
+                setBasePageWidth(
+                    Math.max(0, containerWidth - HORIZONTAL_PADDING),
+                );
                 setDoc(document);
                 setPageCount(document.numPages);
                 props.onPageCount(document.numPages);
@@ -406,13 +425,21 @@ export function PdfPreview(props: PdfPreviewProps) {
     });
 
     return (
-        <div class="relative flex min-h-0 flex-1 flex-col">
+        <div
+            ref={element => {
+                paneElement = element;
+            }}
+            class="relative flex min-h-0 flex-1 flex-col"
+        >
             <div
                 ref={element => {
                     scrollContainer = element;
                 }}
                 class="min-h-0 flex-1 overflow-auto bg-neutral-800 p-4"
-                style={{"touch-action": "pan-x pan-y"}}
+                style={{
+                    "touch-action": "pan-x pan-y",
+                    "scrollbar-gutter": "stable",
+                }}
             >
                 <Show when={pageCount() > 0 && doc()} fallback={<EmptyState />}>
                     <div
