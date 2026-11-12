@@ -22,10 +22,7 @@ import {
     type DirEntry,
     type WorkspaceInfo,
 } from "./lib/workspace";
-
-const ZOOM_STEP = 0.25;
-const MIN_ZOOM = 0.25;
-const MAX_ZOOM = 4;
+import {ZOOM_STEP, clampZoom} from "./lib/zoom";
 
 export default function App() {
     let editor: monaco.editor.IStandaloneCodeEditor | undefined;
@@ -250,13 +247,13 @@ export default function App() {
         }
     };
 
-    const zoomIn = () =>
-        setZoom(value => Math.min(MAX_ZOOM, value + ZOOM_STEP));
+    const zoomIn = () => setZoom(value => clampZoom(value + ZOOM_STEP));
 
-    const zoomOut = () =>
-        setZoom(value => Math.max(MIN_ZOOM, value - ZOOM_STEP));
+    const zoomOut = () => setZoom(value => clampZoom(value - ZOOM_STEP));
 
     const resetZoom = () => setZoom(1);
+
+    const setZoomAt = (value: number) => setZoom(clampZoom(value));
 
     const exportCurrentPdf = async () => {
         const workspaceInfo = workspace();
@@ -400,6 +397,7 @@ export default function App() {
                     <PdfPreview
                         url={pdfUrl()}
                         zoom={zoom()}
+                        onZoomChange={setZoomAt}
                         onPageCount={count => setPageCount(count)}
                     />
                     <ErrorPanel error={error()} />

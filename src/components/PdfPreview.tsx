@@ -10,14 +10,18 @@ import {
     onMount,
 } from "solid-js";
 
+import {clampZoom} from "../lib/zoom";
+
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
 const PAGE_GAP = 16;
 const HORIZONTAL_PADDING = 32;
+const WHEEL_ZOOM_SENSITIVITY = 0.0025;
 
 interface PdfPreviewProps {
     url: string | null;
     zoom: number;
+    onZoomChange: (zoom: number) => void;
     onPageCount: (count: number) => void;
 }
 
@@ -29,6 +33,25 @@ function PdfPage(props: {
     let canvas: HTMLCanvasElement | undefined;
     let renderTask: RenderTask | undefined;
     let generation = 0;
+
+    const [aspectRatio, setAspectRatio] = createSignal(0);
+
+    // Keep the CSS size of the canvas in sync with the requested width
+    // synchronously, so the scroll container can be adjusted while zooming
+    // before the page has finished re-rendering.
+    createEffect(() => {
+        const width = props.width;
+        const aspect = aspectRatio();
+
+        if (!canvas || width <= 0) {
+            return;
+        }
+
+        canvas.style.width = `${Math.floor(width)}px`;
+        if (aspect > 0) {
+            canvas.style.height = `${Math.floor(width * aspect)}px`;
+        }
+    });
 
     createEffect(() => {
         const doc = props.doc;
@@ -55,8 +78,7 @@ function PdfPage(props: {
 
             canvas.width = Math.floor(viewport.width);
             canvas.height = Math.floor(viewport.height);
-            canvas.style.width = `${Math.floor(width)}px`;
-            canvas.style.height = `${Math.floor(viewport.height / pixelRatio)}px`;
+            setAspectRatio(baseViewport.height / baseViewport.width);
 
             const task = page.render({canvas, viewport});
             renderTask = task;
@@ -101,22 +123,227 @@ export function PdfPreview(props: PdfPreviewProps) {
     const pageWidth = () => viewportWidth() * props.zoom;
 
     onMount(() => {
-        if (!scrollContainer) {
+        const container = scrollContainer;
+        if (!container) {
             return;
         }
 
         const updateWidth = () => {
             setViewportWidth(
-                Math.max(0, scrollContainer!.clientWidth - HORIZONTAL_PADDING),
+                Math.max(0, container.clientWidth - HORIZONTAL_PADDING),
             );
         };
 
         updateWidth();
 
         const observer = new ResizeObserver(updateWidth);
-        observer.observe(scrollContainer);
+        observer.observe(container);
 
-        onCleanup(() => observer.disconnect());
+        let zoomFrame = 0;
+        let accumulatedFactor = 1;
+        let anchorX = 0;
+        let anchorY = 0;
+
+        const applyZoom = (
+            factor: number,
+            clientX: number,
+            clientY: number,
+        ) => {
+            const current = props.zoom;
+            const next = clampZoom(current * factor);
+
+            if (Math.abs(next - current) < 1e-4) {
+                return;
+            }
+
+            const rect = container.getBoundingClientRect();
+            const pointerX = clientX - rect.left;
+            const pointerY = clientY - rect.top;
+            const ratioX =
+                (container.scrollLeft + pointerX)
+                / Math.max(1, container.scrollWidth);
+            const ratioY =
+                (container.scrollTop + pointerY)
+                / Math.max(1, container.scrollHeight);
+
+            props.onZoomChange(next);
+
+            // Keep the point under the cursor anchored while the pages
+            // resize. Page sizes update synchronously, so this takes effect
+            // before the next paint.
+            container.scrollLeft = ratioX * container.scrollWidth - pointerX;
+            container.scrollTop = ratioY * container.scrollHeight - pointerY;
+        };
+
+        const scheduleZoom = (
+            factor: number,
+            clientX: number,
+            clientY: number,
+        ) => {
+            if (!Number.isFinite(factor) || factor <= 0) {
+                return;
+            }
+
+            accumulatedFactor *= factor;
+            anchorX = clientX;
+            anchorY = clientY;
+
+            if (zoomFrame !== 0) {
+                return;
+            }
+
+            zoomFrame = requestAnimationFrame(() => {
+                zoomFrame = 0;
+                const pendingFactor = accumulatedFactor;
+                accumulatedFactor = 1;
+                applyZoom(pendingFactor, anchorX, anchorY);
+            });
+        };
+
+        const normalizeWheelDelta = (event: WheelEvent) => {
+            if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+                return event.deltaY * 16;
+            }
+            if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+                return event.deltaY * container.clientHeight;
+            }
+            return event.deltaY;
+        };
+
+        const handleWheel = (event: WheelEvent) => {
+            if (!(event.ctrlKey || event.metaKey)) {
+                return;
+            }
+
+            event.preventDefault();
+
+            const delta = normalizeWheelDelta(event);
+            scheduleZoom(
+                Math.exp(-delta * WHEEL_ZOOM_SENSITIVITY),
+                event.clientX,
+                event.clientY,
+            );
+        };
+
+        // WebKit-based webviews (macOS) emit dedicated pinch gesture events
+        // instead of ctrl+wheel events.
+        type GestureEvent = Event & {
+            scale?: number;
+            clientX?: number;
+            clientY?: number;
+        };
+
+        let gestureScale = 1;
+
+        const handleGestureStart = (event: Event) => {
+            event.preventDefault();
+            gestureScale = (event as GestureEvent).scale ?? 1;
+        };
+
+        const handleGestureChange = (event: Event) => {
+            event.preventDefault();
+
+            const gesture = event as GestureEvent;
+            const scale = gesture.scale ?? gestureScale;
+            const rect = container.getBoundingClientRect();
+
+            if (gestureScale > 0) {
+                scheduleZoom(
+                    scale / gestureScale,
+                    gesture.clientX ?? rect.left + rect.width / 2,
+                    gesture.clientY ?? rect.top + rect.height / 2,
+                );
+            }
+
+            gestureScale = scale;
+        };
+
+        const handleGestureEnd = (event: Event) => {
+            event.preventDefault();
+            gestureScale = 1;
+        };
+
+        // Touchscreen pinch-to-zoom.
+        const touchDistance = (touches: TouchList) => {
+            const first = touches[0];
+            const second = touches[1];
+            return Math.hypot(
+                second.clientX - first.clientX,
+                second.clientY - first.clientY,
+            );
+        };
+
+        let pinchDistance = 0;
+
+        const handleTouchStart = (event: TouchEvent) => {
+            if (event.touches.length !== 2) {
+                pinchDistance = 0;
+                return;
+            }
+
+            event.preventDefault();
+            pinchDistance = touchDistance(event.touches);
+        };
+
+        const handleTouchMove = (event: TouchEvent) => {
+            if (event.touches.length !== 2) {
+                return;
+            }
+
+            event.preventDefault();
+
+            const distance = touchDistance(event.touches);
+            if (pinchDistance <= 0 || distance <= 0) {
+                pinchDistance = distance;
+                return;
+            }
+
+            const centerX =
+                (event.touches[0].clientX + event.touches[1].clientX) / 2;
+            const centerY =
+                (event.touches[0].clientY + event.touches[1].clientY) / 2;
+
+            scheduleZoom(distance / pinchDistance, centerX, centerY);
+            pinchDistance = distance;
+        };
+
+        const handleTouchEnd = (event: TouchEvent) => {
+            if (event.touches.length < 2) {
+                pinchDistance = 0;
+            }
+        };
+
+        container.addEventListener("wheel", handleWheel, {passive: false});
+        container.addEventListener("gesturestart", handleGestureStart, {
+            passive: false,
+        });
+        container.addEventListener("gesturechange", handleGestureChange, {
+            passive: false,
+        });
+        container.addEventListener("gestureend", handleGestureEnd, {
+            passive: false,
+        });
+        container.addEventListener("touchstart", handleTouchStart, {
+            passive: false,
+        });
+        container.addEventListener("touchmove", handleTouchMove, {
+            passive: false,
+        });
+        container.addEventListener("touchend", handleTouchEnd);
+        container.addEventListener("touchcancel", handleTouchEnd);
+
+        onCleanup(() => {
+            observer.disconnect();
+            cancelAnimationFrame(zoomFrame);
+            container.removeEventListener("wheel", handleWheel);
+            container.removeEventListener("gesturestart", handleGestureStart);
+            container.removeEventListener("gesturechange", handleGestureChange);
+            container.removeEventListener("gestureend", handleGestureEnd);
+            container.removeEventListener("touchstart", handleTouchStart);
+            container.removeEventListener("touchmove", handleTouchMove);
+            container.removeEventListener("touchend", handleTouchEnd);
+            container.removeEventListener("touchcancel", handleTouchEnd);
+        });
     });
 
     createEffect(() => {
@@ -185,6 +412,7 @@ export function PdfPreview(props: PdfPreviewProps) {
                     scrollContainer = element;
                 }}
                 class="min-h-0 flex-1 overflow-auto bg-neutral-800 p-4"
+                style={{"touch-action": "pan-x pan-y"}}
             >
                 <Show when={pageCount() > 0 && doc()} fallback={<EmptyState />}>
                     <div

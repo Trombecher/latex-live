@@ -30,7 +30,7 @@ export function PreviewToolbar(props: PreviewToolbarProps) {
                         <button
                             type="button"
                             class="inline-flex h-7 min-w-12 items-center justify-center rounded-md px-1.5 text-[11px] text-neutral-300 tabular-nums transition hover:bg-neutral-700"
-                            title="Reset zoom"
+                            title="Reset zoom (Ctrl + scroll or pinch to zoom)"
                             onClick={props.onZoomReset}
                         >
                             {Math.round(props.zoom * 100)}%
