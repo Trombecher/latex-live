@@ -20,22 +20,23 @@ export function Sidebar(props: SidebarProps) {
 
     return (
         <aside class="flex w-60 shrink-0 flex-col border-r border-neutral-700 bg-neutral-900">
-            <div class="flex h-10 shrink-0 items-center gap-2 border-b border-neutral-700 px-2">
+            <div class="flex h-10 shrink-0 items-center px-2">
                 <span
-                    class="min-w-0 flex-1 truncate text-[11px] font-semibold tracking-wide text-neutral-400 uppercase"
+                    class="min-w-0 flex-1 truncate text-xs font-semibold tracking-wide text-neutral-400 uppercase"
                     title={props.workspace?.root}
                 >
                     {props.workspace?.name ?? "No folder open"}
                 </span>
+            </div>
 
+            <div class="shrink-0 border-b border-neutral-700 p-2">
                 <button
                     type="button"
-                    class="grid size-7 shrink-0 place-items-center rounded text-neutral-400 transition hover:bg-neutral-800 hover:text-neutral-100"
-                    title="Open folder"
-                    aria-label="Open folder"
+                    class="inline-flex h-8 w-full items-center justify-center gap-2 rounded-md border border-neutral-700 bg-neutral-800 px-3 text-sm font-medium text-neutral-200 transition hover:border-neutral-600 hover:bg-neutral-700"
                     onClick={props.onOpenFolder}
                 >
                     <FolderOpenIcon />
+                    {props.workspace ? "Change Folder" : "Open Folder"}
                 </button>
             </div>
 
@@ -43,17 +44,10 @@ export function Sidebar(props: SidebarProps) {
                 <Show
                     when={props.workspace}
                     fallback={
-                        <div class="flex h-full flex-col items-center justify-center gap-3 px-4 text-center">
-                            <p class="text-xs text-neutral-500">
+                        <div class="flex h-full flex-col items-center justify-center px-4 text-center">
+                            <p class="text-sm leading-relaxed text-neutral-500">
                                 Open a folder to browse your LaTeX project.
                             </p>
-                            <button
-                                type="button"
-                                class="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-500"
-                                onClick={props.onOpenFolder}
-                            >
-                                Open Folder
-                            </button>
                         </div>
                     }
                 >
@@ -69,7 +63,7 @@ export function Sidebar(props: SidebarProps) {
             </div>
 
             <Show when={shownError()}>
-                <div class="shrink-0 border-t border-red-500/30 bg-red-950/40 px-2 py-2 text-[11px] leading-snug break-words text-red-200">
+                <div class="shrink-0 border-t border-red-500/30 bg-red-950/40 px-2 py-2 text-xs leading-snug break-words text-red-200">
                     {shownError()}
                 </div>
             </Show>

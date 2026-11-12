@@ -106,7 +106,7 @@ export function FileTree(props: FileTreeProps) {
                                     ? Boolean(expanded()[row.entry.path])
                                     : undefined
                             }
-                            class="group flex h-7 w-full items-center gap-1.5 pr-2 text-left text-xs transition-colors"
+                            class="group flex h-8 w-full items-center gap-2 pr-2 text-left text-sm transition-colors"
                             classList={{
                                 "bg-blue-600/20 text-neutral-100": isSelected(),
                                 "text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200":
@@ -117,7 +117,7 @@ export function FileTree(props: FileTreeProps) {
                         >
                             <Show
                                 when={row.entry.isDir}
-                                fallback={<span class="size-3.5 shrink-0" />}
+                                fallback={<span class="size-4 shrink-0" />}
                             >
                                 <ChevronIcon
                                     open={Boolean(expanded()[row.entry.path])}
@@ -153,7 +153,7 @@ function EntryIcon(props: {entry: DirEntry}) {
         return (
             <svg
                 viewBox="0 0 16 16"
-                class="size-3.5 shrink-0 text-neutral-500"
+                class="size-4 shrink-0 text-neutral-500"
                 fill="currentColor"
                 aria-hidden="true"
             >
@@ -164,7 +164,7 @@ function EntryIcon(props: {entry: DirEntry}) {
 
     if (isTexFile(props.entry.path)) {
         return (
-            <span class="grid size-3.5 shrink-0 place-items-center rounded-[2px] bg-red-600/80 text-[6px] font-bold text-white">
+            <span class="grid size-4 shrink-0 place-items-center rounded-[2px] bg-red-600/80 text-[7px] font-bold text-white">
                 T
             </span>
         );
@@ -173,7 +173,7 @@ function EntryIcon(props: {entry: DirEntry}) {
     return (
         <svg
             viewBox="0 0 16 16"
-            class="size-3.5 shrink-0 text-neutral-500"
+            class="size-4 shrink-0 text-neutral-500"
             fill="currentColor"
             aria-hidden="true"
         >
@@ -186,7 +186,7 @@ function ChevronIcon(props: {open: boolean}) {
     return (
         <svg
             viewBox="0 0 16 16"
-            class="size-3.5 shrink-0 text-neutral-500 transition-transform"
+            class="size-4 shrink-0 text-neutral-500 transition-transform"
             classList={{"rotate-90": props.open}}
             fill="currentColor"
             aria-hidden="true"

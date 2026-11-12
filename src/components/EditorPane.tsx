@@ -13,6 +13,7 @@ interface EditorPaneProps {
     file: EditorFile | null;
     onChange: (value: string) => void;
     onSave: () => void;
+    onCompile: () => void;
     onReady: (editor: monaco.editor.IStandaloneCodeEditor) => void;
 }
 
@@ -74,6 +75,10 @@ export function EditorPane(props: EditorPaneProps) {
 
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () =>
             props.onSave(),
+        );
+
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () =>
+            props.onCompile(),
         );
 
         props.onReady(editor);

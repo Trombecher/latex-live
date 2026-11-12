@@ -6,6 +6,7 @@ import {ErrorPanel} from "./components/ErrorPanel";
 import {FilePlaceholder} from "./components/FilePlaceholder";
 import {Logo} from "./components/Logo";
 import {PdfPreview, Spinner} from "./components/PdfPreview";
+import {PreviewToolbar} from "./components/PreviewToolbar";
 import {Sidebar} from "./components/Sidebar";
 import {Toolbar} from "./components/Toolbar";
 import {compileLatex} from "./lib/compile";
@@ -43,6 +44,11 @@ export default function App() {
         const entry = selection();
         return entry !== null && !entry.isDir && isTexFile(entry.path);
     };
+
+    const canCompile = () =>
+        isTexSelected() && !loadingFile() && editorFile() !== null;
+
+    const canSave = () => isTexSelected() && dirty();
 
     const replacePdfUrl = (url: string | null) => {
         if (currentPdfUrl) {
@@ -263,19 +269,15 @@ export default function App() {
     return (
         <div class="flex h-screen flex-col overflow-hidden bg-neutral-900 text-neutral-200">
             <Toolbar
-                workspaceName={workspace()?.name ?? null}
+                hasWorkspace={workspace() !== null}
                 compiling={compiling()}
                 durationMs={durationMs()}
                 pageCount={pageCount()}
                 error={error()}
                 dirty={dirty()}
-                canSave={isTexSelected() && dirty()}
-                canCompile={
-                    isTexSelected() && !loadingFile() && editorFile() !== null
-                }
-                onOpenFolder={() => void openFolder()}
+                canSave={canSave()}
+                canCompile={canCompile()}
                 onSave={() => void save()}
-                onCompile={() => void compile()}
             />
 
             <main class="flex min-h-0 flex-1">
@@ -309,6 +311,7 @@ export default function App() {
                             file={editorFile()}
                             onChange={handleEditorChange}
                             onSave={() => void save()}
+                            onCompile={() => void compile()}
                             onReady={instance => {
                                 editor = instance;
                             }}
@@ -326,6 +329,11 @@ export default function App() {
                 </section>
 
                 <section class="flex min-w-0 flex-1 flex-col bg-neutral-800">
+                    <PreviewToolbar
+                        canCompile={canCompile()}
+                        compiling={compiling()}
+                        onCompile={() => void compile()}
+                    />
                     <PdfPreview
                         url={pdfUrl()}
                         onPageCount={count => setPageCount(count)}
