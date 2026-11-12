@@ -17,7 +17,7 @@ interface PreviewToolbarProps {
 export function PreviewToolbar(props: PreviewToolbarProps) {
     return (
         <div class="@container flex h-10 shrink-0 items-center justify-between gap-2 border-b border-neutral-700 px-3">
-            <span class="hidden text-xs font-semibold tracking-wide text-neutral-400 uppercase @min-[18rem]:inline">
+            <span class="hidden text-xs font-semibold tracking-wide text-neutral-400 uppercase @2xs:inline">
                 Preview
             </span>
 
@@ -53,13 +53,13 @@ export function PreviewToolbar(props: PreviewToolbarProps) {
                         onClick={props.onExport}
                     >
                         <DownloadIcon />
-                        <span class="hidden @min-[24rem]:inline">Export</span>
+                        <span class="hidden @sm:inline">Export</span>
                     </button>
                 </Show>
 
                 <Show when={props.canCompile}>
                     <div class="flex items-center gap-2">
-                        <kbd class="hidden rounded border border-neutral-700 bg-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-400 @min-[32rem]:inline">
+                        <kbd class="hidden rounded border border-neutral-700 bg-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-400 @lg:inline">
                             Ctrl/Cmd + Enter
                         </kbd>
                         <button

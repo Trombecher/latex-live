@@ -23,9 +23,9 @@ export function Sidebar(props: SidebarProps) {
         <aside class="flex w-60 shrink-0 flex-col border-r border-neutral-700 bg-neutral-900">
             <div class="flex h-12 shrink-0 items-center gap-2 border-b border-neutral-700 px-3">
                 <Logo class="size-6 rounded" />
-                <span class="text-sm font-semibold tracking-tight text-neutral-100">
-                    latex-live
-                </span>
+                <h1 class="text-xl font-semibold tracking-tight text-neutral-100">
+                    Latex Live
+                </h1>
             </div>
 
             <div class="flex h-10 shrink-0 items-center px-2">
@@ -71,7 +71,7 @@ export function Sidebar(props: SidebarProps) {
             </div>
 
             <Show when={shownError()}>
-                <div class="shrink-0 border-t border-red-500/30 bg-red-950/40 px-2 py-2 text-xs leading-snug break-words text-red-200">
+                <div class="wrap-break-words shrink-0 border-t border-red-500/30 bg-red-950/40 px-2 py-2 text-xs leading-snug text-red-200">
                     {shownError()}
                 </div>
             </Show>

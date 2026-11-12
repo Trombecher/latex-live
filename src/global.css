@@ -1,7 +1,5 @@
 @import "tailwindcss";
 
-html,
-body {
-    height: 100%;
-    overflow: hidden;
+@theme {
+    --font-sans: "Inter", "Inter Variable", system-ui;
 }

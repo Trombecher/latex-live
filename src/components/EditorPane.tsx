@@ -34,9 +34,11 @@ export function EditorPane(props: EditorPaneProps) {
             model: null,
             theme: "latex-dark",
             automaticLayout: true,
-            fontSize: 14,
+            fontSize: 18,
+            fontLigatures: true,
+            lineHeight: 1.6,
             fontFamily:
-                "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+                "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
             minimap: {enabled: false},
             scrollBeyondLastLine: false,
             wordWrap: "on",

@@ -164,7 +164,7 @@ function EntryIcon(props: {entry: DirEntry}) {
 
     if (isTexFile(props.entry.path)) {
         return (
-            <span class="grid size-4 shrink-0 place-items-center rounded-[2px] bg-red-600/80 text-[7px] font-bold text-white">
+            <span class="grid size-4 shrink-0 place-items-center rounded-xs bg-red-600/80 text-[7px] font-bold text-white">
                 T
             </span>
         );
