@@ -1,54 +1,18 @@
 import * as monaco from "monaco-editor/editor";
-import {onCleanup, onMount} from "solid-js";
+import {createEffect, onCleanup, onMount} from "solid-js";
 
 import {setupMonaco} from "../editor/monaco-setup";
+import {isTexFile} from "../lib/files";
 
-const SAMPLE_DOCUMENT = `\\documentclass[11pt]{article}
-
-\\usepackage{amsmath}
-\\usepackage{amssymb}
-\\usepackage{hyperref}
-
-\\title{Hello, LaTeX Live}
-\\author{Your Name}
-\\date{\\today}
-
-\\begin{document}
-
-\\maketitle
-
-\\begin{abstract}
-This document is compiled with Tectonic and rendered with pdf.js, entirely
-inside the app. Edit the source on the left and press \\textbf{Compile}.
-\\end{abstract}
-
-\\section{Introduction}
-LaTeX Live is a small editor for writing and previewing LaTeX documents. It
-supports syntax highlighting for commands, environments, math, and comments.
-
-\\section{Mathematics}
-Inline math such as $E = mc^2$ and display math work as expected:
-
-\\[
-    \\int_{-\\infty}^{\\infty} e^{-x^2} \\, dx = \\sqrt{\\pi}
-\\]
-
-\\begin{align}
-    (a + b)^2 &= a^2 + 2ab + b^2 \\\\
-    \\nabla \\cdot \\mathbf{E} &= \\frac{\\rho}{\\varepsilon_0}
-\\end{align}
-
-\\section{Lists}
-\\begin{itemize}
-    \\item Compile with the toolbar button.
-    \\item Use \\texttt{Ctrl/Cmd + Enter} as a shortcut.
-    \\item Fix errors and compile again.
-\\end{itemize}
-
-\\end{document}
-`;
+export interface EditorFile {
+    path: string;
+    text: string;
+}
 
 interface EditorPaneProps {
+    file: EditorFile | null;
+    onChange: (value: string) => void;
+    onSave: () => void;
     onReady: (editor: monaco.editor.IStandaloneCodeEditor) => void;
 }
 
@@ -62,14 +26,10 @@ export function EditorPane(props: EditorPaneProps) {
 
         setupMonaco();
 
-        const model = monaco.editor.createModel(
-            SAMPLE_DOCUMENT,
-            "latex",
-            monaco.Uri.parse("file:///main.tex"),
-        );
+        let model: monaco.editor.ITextModel | null = null;
 
         const editor = monaco.editor.create(host, {
-            model,
+            model: null,
             theme: "latex-dark",
             automaticLayout: true,
             fontSize: 14,
@@ -87,11 +47,46 @@ export function EditorPane(props: EditorPaneProps) {
             suggest: {showWords: false},
         });
 
+        const applyFile = (file: EditorFile | null) => {
+            editor.setModel(null);
+            model?.dispose();
+            model = null;
+
+            if (!file) {
+                return;
+            }
+
+            model = monaco.editor.createModel(
+                file.text,
+                isTexFile(file.path) ? "latex" : "plaintext",
+                monaco.Uri.parse(`file:///workspace/${encodeURI(file.path)}`),
+            );
+
+            editor.setModel(model);
+            editor.setPosition({lineNumber: 1, column: 1});
+            editor.setScrollTop(0);
+            editor.focus();
+        };
+
+        const changeSubscription = editor.onDidChangeModelContent(() => {
+            props.onChange(editor.getValue());
+        });
+
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () =>
+            props.onSave(),
+        );
+
         props.onReady(editor);
 
+        createEffect(() => {
+            applyFile(props.file);
+        });
+
         onCleanup(() => {
+            changeSubscription.dispose();
+            editor.setModel(null);
+            model?.dispose();
             editor.dispose();
-            model.dispose();
         });
     });
 

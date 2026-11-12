@@ -3,7 +3,10 @@
 //! This mirrors `tectonic::latex_to_pdf`, but keeps a status backend around so
 //! that TeX diagnostics can be returned to the frontend when compilation fails.
 
-use std::fmt::{Arguments, Write};
+use std::{
+    fmt::{Arguments, Write},
+    path::Path,
+};
 
 use tectonic::{
     FORMAT_SERIAL,
@@ -75,9 +78,13 @@ fn with_diagnostics(message: impl AsRef<str>, status: &CaptureStatus) -> String 
 
 /// Compile a LaTeX source string into PDF bytes.
 ///
+/// Relative `\input`, `\include`, image, and bibliography paths are resolved
+/// from `filesystem_root`. The primary input itself comes from `source`, so
+/// unsaved editor contents are compiled without having to write to disk first.
+///
 /// The first invocation may download the Tectonic resource bundle and build a
 /// LaTeX format file. Those artifacts are cached by Tectonic for later runs.
-pub fn compile(source: &str) -> Result<Vec<u8>, String> {
+pub fn compile(source: &str, filesystem_root: &Path, file_name: &str) -> Result<Vec<u8>, String> {
     let config = PersistentConfig::open(false)
         .map_err(|e| format!("failed to open the Tectonic configuration: {e:#}"))?;
 
@@ -100,7 +107,8 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
     builder
         .bundle(bundle)
         .primary_input_buffer(source.as_bytes())
-        .tex_input_name("main.tex")
+        .tex_input_name(file_name)
+        .filesystem_root(filesystem_root)
         .format_name("latex")
         .format_cache_path(format_cache_path)
         .output_format(OutputFormat::Pdf)
@@ -117,9 +125,14 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
         .run(&mut status)
         .map_err(|e| with_diagnostics(format!("{e:#}"), &status))?;
 
+    let pdf_name = Path::new(file_name)
+        .with_extension("pdf")
+        .to_string_lossy()
+        .replace('\\', "/");
+
     let mut files = session.into_file_data();
     files
-        .remove("main.pdf")
+        .remove(&pdf_name)
         .map(|file| file.data)
         .ok_or_else(|| with_diagnostics("LaTeX finished but produced no PDF.", &status))
 }
@@ -134,6 +147,8 @@ mod tests {
 \begin{document}
 Hello, LaTeX Live!
 \end{document}",
+            std::path::Path::new("."),
+            "main.tex",
         )
         .expect("compilation should succeed");
 

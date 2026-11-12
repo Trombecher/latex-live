@@ -1,21 +1,47 @@
 import type * as monaco from "monaco-editor/editor";
-import {createSignal, onCleanup, onMount} from "solid-js";
+import {Show, createSignal, onCleanup, onMount} from "solid-js";
 
-import {EditorPane} from "./components/EditorPane";
+import {EditorPane, type EditorFile} from "./components/EditorPane";
 import {ErrorPanel} from "./components/ErrorPanel";
-import {PdfPreview} from "./components/PdfPreview";
+import {FilePlaceholder} from "./components/FilePlaceholder";
+import {PdfPreview, Spinner} from "./components/PdfPreview";
+import {Sidebar} from "./components/Sidebar";
 import {Toolbar} from "./components/Toolbar";
 import {compileLatex} from "./lib/compile";
+import {errorMessage, fileName, isTexFile} from "./lib/files";
+import {
+    chooseWorkspaceDirectory,
+    confirmDiscardChanges,
+    openWorkspace,
+    readFile,
+    writeFile,
+    type DirEntry,
+    type WorkspaceInfo,
+} from "./lib/workspace";
 
 export default function App() {
     let editor: monaco.editor.IStandaloneCodeEditor | undefined;
     let currentPdfUrl: string | null = null;
+    let savedText = "";
+    let readGeneration = 0;
+
+    const [workspace, setWorkspace] = createSignal<WorkspaceInfo | null>(null);
+    const [selection, setSelection] = createSignal<DirEntry | null>(null);
+    const [editorFile, setEditorFile] = createSignal<EditorFile | null>(null);
+    const [dirty, setDirty] = createSignal(false);
+    const [loadingFile, setLoadingFile] = createSignal(false);
+    const [fileError, setFileError] = createSignal<string | null>(null);
 
     const [compiling, setCompiling] = createSignal(false);
     const [pdfUrl, setPdfUrl] = createSignal<string | null>(null);
     const [error, setError] = createSignal<string | null>(null);
     const [durationMs, setDurationMs] = createSignal<number | null>(null);
     const [pageCount, setPageCount] = createSignal(0);
+
+    const isTexSelected = () => {
+        const entry = selection();
+        return entry !== null && !entry.isDir && isTexFile(entry.path);
+    };
 
     const replacePdfUrl = (url: string | null) => {
         if (currentPdfUrl) {
@@ -25,8 +51,154 @@ export default function App() {
         setPdfUrl(url);
     };
 
+    const resetPreview = () => {
+        replacePdfUrl(null);
+        setError(null);
+        setDurationMs(null);
+        setPageCount(0);
+    };
+
+    const clearCurrentFile = () => {
+        readGeneration += 1;
+        setSelection(null);
+        setEditorFile(null);
+        savedText = "";
+        setDirty(false);
+        setLoadingFile(false);
+        resetPreview();
+    };
+
+    const confirmDiscard = async (): Promise<boolean> => {
+        const entry = selection();
+        if (!dirty() || !entry) {
+            return true;
+        }
+
+        return confirmDiscardChanges(fileName(entry.path));
+    };
+
+    const selectEntry = async (entry: DirEntry) => {
+        if (entry.isDir) {
+            return;
+        }
+
+        const current = selection();
+        if (current?.path === entry.path) {
+            return;
+        }
+
+        if (!(await confirmDiscard())) {
+            return;
+        }
+
+        const generation = ++readGeneration;
+
+        setSelection(entry);
+        setFileError(null);
+
+        if (!isTexFile(entry.path)) {
+            setEditorFile(null);
+            savedText = "";
+            setDirty(false);
+            setLoadingFile(false);
+            resetPreview();
+            return;
+        }
+
+        setLoadingFile(true);
+
+        try {
+            const text = await readFile(entry.path);
+
+            if (generation !== readGeneration) {
+                return;
+            }
+
+            savedText = text;
+            setEditorFile({path: entry.path, text});
+            setDirty(false);
+            resetPreview();
+        } catch (cause) {
+            if (generation !== readGeneration) {
+                return;
+            }
+
+            setSelection(null);
+            setEditorFile(null);
+            savedText = "";
+            setDirty(false);
+            setFileError(errorMessage(cause));
+        } finally {
+            if (generation === readGeneration) {
+                setLoadingFile(false);
+            }
+        }
+    };
+
+    const openFolder = async () => {
+        if (!(await confirmDiscard())) {
+            return;
+        }
+
+        try {
+            const path = await chooseWorkspaceDirectory();
+            if (!path) {
+                return;
+            }
+
+            const info = await openWorkspace(path);
+
+            clearCurrentFile();
+            setFileError(null);
+            setWorkspace(info);
+
+            const main = info.entries.find(
+                entry =>
+                    !entry.isDir && entry.name.toLowerCase() === "main.tex",
+            );
+
+            if (main) {
+                await selectEntry(main);
+            }
+        } catch (cause) {
+            setFileError(errorMessage(cause));
+        }
+    };
+
+    const save = async () => {
+        const entry = selection();
+        if (
+            !editor
+            || !entry
+            || !isTexFile(entry.path)
+            || loadingFile()
+            || !editorFile()
+        ) {
+            return;
+        }
+
+        try {
+            const text = editor.getValue();
+            await writeFile(entry.path, text);
+            savedText = text;
+            setDirty(editor.getValue() !== savedText);
+            setFileError(null);
+        } catch (cause) {
+            setFileError(errorMessage(cause));
+        }
+    };
+
     const compile = async () => {
-        if (compiling() || !editor) {
+        const entry = selection();
+        if (
+            compiling()
+            || !editor
+            || !entry
+            || !isTexFile(entry.path)
+            || !workspace()
+            || loadingFile()
+            || !editorFile()
+        ) {
             return;
         }
 
@@ -36,30 +208,41 @@ export default function App() {
         const startedAt = performance.now();
 
         try {
-            const bytes = await compileLatex(editor.getValue());
+            const bytes = await compileLatex(editor.getValue(), entry.path);
             const blob = new Blob([bytes], {type: "application/pdf"});
 
             replacePdfUrl(URL.createObjectURL(blob));
             setDurationMs(performance.now() - startedAt);
         } catch (cause) {
-            const message =
-                typeof cause === "string"
-                    ? cause
-                    : cause instanceof Error
-                      ? cause.message
-                      : String(cause);
-
-            setError(message);
+            setError(errorMessage(cause));
         } finally {
             setCompiling(false);
         }
     };
 
+    const handleEditorChange = (text: string) => {
+        setDirty(text !== savedText);
+    };
+
     onMount(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
-            if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-                event.preventDefault();
-                void compile();
+            if (!(event.ctrlKey || event.metaKey)) {
+                return;
+            }
+
+            switch (event.key.toLowerCase()) {
+                case "enter":
+                    event.preventDefault();
+                    void compile();
+                    break;
+                case "s":
+                    event.preventDefault();
+                    void save();
+                    break;
+                case "o":
+                    event.preventDefault();
+                    void openFolder();
+                    break;
             }
         };
 
@@ -79,20 +262,66 @@ export default function App() {
     return (
         <div class="flex h-screen flex-col overflow-hidden bg-neutral-900 text-neutral-200">
             <Toolbar
+                workspaceName={workspace()?.name ?? null}
                 compiling={compiling()}
                 durationMs={durationMs()}
                 pageCount={pageCount()}
                 error={error()}
+                dirty={dirty()}
+                canSave={isTexSelected() && dirty()}
+                canCompile={
+                    isTexSelected() && !loadingFile() && editorFile() !== null
+                }
+                onOpenFolder={() => void openFolder()}
+                onSave={() => void save()}
                 onCompile={() => void compile()}
             />
 
             <main class="flex min-h-0 flex-1">
-                <section class="flex w-1/2 min-w-0 flex-col border-r border-neutral-700 bg-neutral-900">
-                    <EditorPane
-                        onReady={instance => {
-                            editor = instance;
-                        }}
-                    />
+                <Sidebar
+                    workspace={workspace()}
+                    entries={workspace()?.entries ?? []}
+                    selectedPath={selection()?.path ?? null}
+                    dirty={dirty()}
+                    error={fileError()}
+                    onOpenFolder={() => void openFolder()}
+                    onSelectFile={entry => void selectEntry(entry)}
+                />
+
+                <section class="relative flex w-1/2 min-w-0 flex-col border-r border-neutral-700 bg-neutral-900">
+                    <Show
+                        when={isTexSelected()}
+                        fallback={
+                            <Show
+                                when={selection()}
+                                fallback={
+                                    <EditorEmptyState
+                                        hasWorkspace={workspace() !== null}
+                                    />
+                                }
+                            >
+                                {entry => <FilePlaceholder entry={entry()} />}
+                            </Show>
+                        }
+                    >
+                        <EditorPane
+                            file={editorFile()}
+                            onChange={handleEditorChange}
+                            onSave={() => void save()}
+                            onReady={instance => {
+                                editor = instance;
+                            }}
+                        />
+                    </Show>
+
+                    <Show when={loadingFile()}>
+                        <div class="absolute inset-0 grid place-items-center bg-neutral-900/70 backdrop-blur-[1px]">
+                            <div class="flex items-center gap-3 rounded-md bg-neutral-900/90 px-4 py-3 text-sm text-neutral-200 shadow-xl">
+                                <Spinner />
+                                Opening file…
+                            </div>
+                        </div>
+                    </Show>
                 </section>
 
                 <section class="flex min-w-0 flex-1 flex-col bg-neutral-800">
@@ -103,6 +332,26 @@ export default function App() {
                     <ErrorPanel error={error()} />
                 </section>
             </main>
+        </div>
+    );
+}
+
+function EditorEmptyState(props: {hasWorkspace: boolean}) {
+    return (
+        <div class="grid h-full place-items-center px-6 text-center">
+            <div class="max-w-sm">
+                <div class="mx-auto mb-4 grid size-12 place-items-center rounded-lg bg-neutral-700/50 text-lg font-semibold text-neutral-400">
+                    TeX
+                </div>
+                <p class="text-sm font-medium text-neutral-300">
+                    {props.hasWorkspace ? "No file selected" : "No folder open"}
+                </p>
+                <p class="mt-1 text-xs leading-relaxed text-neutral-500">
+                    {props.hasWorkspace
+                        ? "Choose a .tex file from the sidebar to start editing."
+                        : "Open a folder to browse your LaTeX project."}
+                </p>
+            </div>
         </div>
     );
 }
