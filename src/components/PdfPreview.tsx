@@ -66,26 +66,32 @@ function PdfPage(props: {
         renderTask?.cancel();
 
         void (async () => {
-            const page = await doc.getPage(pageNumber);
-            if (current !== generation || !canvas) {
-                return;
-            }
-
-            const baseViewport = page.getViewport({scale: 1});
-            const pixelRatio = window.devicePixelRatio || 1;
-            const cssScale = width / baseViewport.width;
-            const viewport = page.getViewport({scale: cssScale * pixelRatio});
-
-            canvas.width = Math.floor(viewport.width);
-            canvas.height = Math.floor(viewport.height);
-            setAspectRatio(baseViewport.height / baseViewport.width);
-
-            const task = page.render({canvas, viewport});
-            renderTask = task;
-
             try {
+                const page = await doc.getPage(pageNumber);
+                if (current !== generation || !canvas) {
+                    return;
+                }
+
+                const baseViewport = page.getViewport({scale: 1});
+                const pixelRatio = window.devicePixelRatio || 1;
+                const cssScale = width / baseViewport.width;
+                const viewport = page.getViewport({
+                    scale: cssScale * pixelRatio,
+                });
+
+                canvas.width = Math.floor(viewport.width);
+                canvas.height = Math.floor(viewport.height);
+                setAspectRatio(baseViewport.height / baseViewport.width);
+
+                const task = page.render({canvas, viewport});
+                renderTask = task;
+
                 await task.promise;
             } catch (error) {
+                if (current !== generation) {
+                    return;
+                }
+
                 if (
                     (error as {name?: string}).name
                     !== "RenderingCancelledException"
@@ -121,7 +127,22 @@ export function PdfPreview(props: PdfPreviewProps) {
     const [loadingDocument, setLoadingDocument] = createSignal(false);
     const [loadError, setLoadError] = createSignal<string | null>(null);
 
+    let displayedDoc: PDFDocumentProxy | null = null;
+
     const pageWidth = () => basePageWidth() * props.zoom;
+
+    const clearDocument = () => {
+        const previous = displayedDoc;
+        displayedDoc = null;
+
+        if (previous) {
+            void previous.loadingTask.destroy();
+        }
+
+        setDoc(null);
+        setPageCount(0);
+        props.onPageCount(0);
+    };
 
     onMount(() => {
         const container = scrollContainer;
@@ -364,48 +385,60 @@ export function PdfPreview(props: PdfPreviewProps) {
     createEffect(() => {
         const url = props.url;
         let cancelled = false;
-        let loadedDocument: PDFDocumentProxy | null = null;
+        let resolved = false;
 
         setLoadError(null);
 
         if (!url) {
-            setDoc(null);
-            setPageCount(0);
-            props.onPageCount(0);
+            setLoadingDocument(false);
+            setBasePageWidth(0);
+            clearDocument();
             return;
         }
 
         setLoadingDocument(true);
-        setDoc(null);
-        setPageCount(0);
 
+        // Keep the previous document visible while the new one loads, so the
+        // zoom level and scroll position carry over to the recompiled PDF.
+        const previousDoc = displayedDoc;
         const loadingTask = pdfjs.getDocument({url});
 
         void loadingTask.promise
             .then(document => {
-                loadedDocument = document;
-
                 if (cancelled) {
                     void document.loadingTask.destroy();
                     return;
                 }
 
-                const containerWidth = scrollContainer?.clientWidth ?? 0;
-                setBasePageWidth(
-                    Math.max(0, containerWidth - HORIZONTAL_PADDING),
-                );
+                resolved = true;
+                displayedDoc = document;
+
+                if (basePageWidth() <= 0) {
+                    const containerWidth = scrollContainer?.clientWidth ?? 0;
+                    setBasePageWidth(
+                        Math.max(0, containerWidth - HORIZONTAL_PADDING),
+                    );
+                }
+
                 setDoc(document);
                 setPageCount(document.numPages);
                 props.onPageCount(document.numPages);
+
+                if (previousDoc && previousDoc !== document) {
+                    void previousDoc.loadingTask.destroy();
+                }
             })
             .catch(error => {
                 if (!cancelled) {
                     setLoadError(
                         error instanceof Error ? error.message : String(error),
                     );
-                    setDoc(null);
-                    setPageCount(0);
-                    props.onPageCount(0);
+
+                    if (!previousDoc) {
+                        setDoc(null);
+                        setPageCount(0);
+                        props.onPageCount(0);
+                    }
                 }
             })
             .finally(() => {
@@ -416,12 +449,21 @@ export function PdfPreview(props: PdfPreviewProps) {
 
         onCleanup(() => {
             cancelled = true;
-            if (loadedDocument) {
-                void loadedDocument.loadingTask.destroy();
-            } else {
+
+            // Only cancel the load if it has not become the displayed
+            // document yet; the next compile destroys the old document once
+            // the replacement is ready.
+            if (!resolved) {
                 void loadingTask.destroy();
             }
         });
+    });
+
+    onCleanup(() => {
+        if (displayedDoc) {
+            void displayedDoc.loadingTask.destroy();
+            displayedDoc = null;
+        }
     });
 
     return (
