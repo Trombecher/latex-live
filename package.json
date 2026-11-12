@@ -10,7 +10,8 @@
         "build": "vite build",
         "serve": "vite preview",
         "tauri": "tauri",
-        "check": "tsc --noEmit && oxlint"
+        "check": "tsc --noEmit && oxlint",
+        "regenerate-icon": "tauri icon src/icon.svg"
     },
     "dependencies": {
         "@tauri-apps/api": "^2.12.4",
