@@ -1,4 +1,5 @@
 mod compile;
+mod export;
 mod workspace;
 
 use workspace::WorkspaceState;
@@ -52,6 +53,7 @@ pub fn run() {
         .manage(WorkspaceState::default())
         .invoke_handler(tauri::generate_handler![
             compile_latex,
+            export::export_pdf,
             workspace::open_workspace,
             workspace::list_workspace_directory,
             workspace::read_workspace_file,

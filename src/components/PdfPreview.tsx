@@ -17,6 +17,7 @@ const HORIZONTAL_PADDING = 32;
 
 interface PdfPreviewProps {
     url: string | null;
+    zoom: number;
     onPageCount: (count: number) => void;
 }
 
@@ -93,9 +94,11 @@ export function PdfPreview(props: PdfPreviewProps) {
 
     const [doc, setDoc] = createSignal<PDFDocumentProxy | null>(null);
     const [pageCount, setPageCount] = createSignal(0);
-    const [pageWidth, setPageWidth] = createSignal(0);
+    const [viewportWidth, setViewportWidth] = createSignal(0);
     const [loadingDocument, setLoadingDocument] = createSignal(false);
     const [loadError, setLoadError] = createSignal<string | null>(null);
+
+    const pageWidth = () => viewportWidth() * props.zoom;
 
     onMount(() => {
         if (!scrollContainer) {
@@ -103,7 +106,7 @@ export function PdfPreview(props: PdfPreviewProps) {
         }
 
         const updateWidth = () => {
-            setPageWidth(
+            setViewportWidth(
                 Math.max(0, scrollContainer!.clientWidth - HORIZONTAL_PADDING),
             );
         };
@@ -185,7 +188,7 @@ export function PdfPreview(props: PdfPreviewProps) {
             >
                 <Show when={pageCount() > 0 && doc()} fallback={<EmptyState />}>
                     <div
-                        class="mx-auto flex flex-col items-center"
+                        class="mx-auto flex w-max min-w-full flex-col items-center"
                         style={{gap: `${PAGE_GAP}px`}}
                     >
                         <For

@@ -1,3 +1,4 @@
+import {join} from "@tauri-apps/api/path";
 import type * as monaco from "monaco-editor/editor";
 import {Show, createSignal, onCleanup, onMount} from "solid-js";
 
@@ -10,6 +11,7 @@ import {PdfPreview, Spinner} from "./components/PdfPreview";
 import {PreviewToolbar} from "./components/PreviewToolbar";
 import {Sidebar} from "./components/Sidebar";
 import {compileLatex} from "./lib/compile";
+import {exportPdf} from "./lib/export";
 import {errorMessage, fileName, isTexFile} from "./lib/files";
 import {
     chooseWorkspaceDirectory,
@@ -21,9 +23,14 @@ import {
     type WorkspaceInfo,
 } from "./lib/workspace";
 
+const ZOOM_STEP = 0.25;
+const MIN_ZOOM = 0.25;
+const MAX_ZOOM = 4;
+
 export default function App() {
     let editor: monaco.editor.IStandaloneCodeEditor | undefined;
     let currentPdfUrl: string | null = null;
+    let pdfBytes: Uint8Array | null = null;
     let savedText = "";
     let readGeneration = 0;
     let pendingSave: Promise<void> | null = null;
@@ -40,6 +47,7 @@ export default function App() {
     const [error, setError] = createSignal<string | null>(null);
     const [pageCount, setPageCount] = createSignal(0);
     const [previewRatio, setPreviewRatio] = createSignal(0.5);
+    const [zoom, setZoom] = createSignal(1);
 
     const isTexSelected = () => {
         const entry = selection();
@@ -58,6 +66,7 @@ export default function App() {
     };
 
     const resetPreview = () => {
+        pdfBytes = null;
         replacePdfUrl(null);
         setError(null);
         setPageCount(0);
@@ -232,11 +241,45 @@ export default function App() {
             const bytes = await compileLatex(editor.getValue(), entry.path);
             const blob = new Blob([bytes], {type: "application/pdf"});
 
+            pdfBytes = bytes;
             replacePdfUrl(URL.createObjectURL(blob));
         } catch (cause) {
             setError(errorMessage(cause));
         } finally {
             setCompiling(false);
+        }
+    };
+
+    const zoomIn = () =>
+        setZoom(value => Math.min(MAX_ZOOM, value + ZOOM_STEP));
+
+    const zoomOut = () =>
+        setZoom(value => Math.max(MIN_ZOOM, value - ZOOM_STEP));
+
+    const resetZoom = () => setZoom(1);
+
+    const exportCurrentPdf = async () => {
+        const workspaceInfo = workspace();
+        if (!pdfBytes || !workspaceInfo) {
+            return;
+        }
+
+        const entry = selection();
+        const relativePdf = entry
+            ? entry.path.replace(/\.(tex|latex)$/i, ".pdf")
+            : "document.pdf";
+
+        try {
+            const destination = await exportPdf(
+                await join(workspaceInfo.root, relativePdf),
+                pdfBytes,
+            );
+
+            if (destination) {
+                setFileError(null);
+            }
+        } catch (cause) {
+            setFileError(errorMessage(cause));
         }
     };
 
@@ -347,10 +390,16 @@ export default function App() {
                         canCompile={canCompile()}
                         compiling={compiling()}
                         pageCount={pageCount()}
+                        zoom={zoom()}
+                        onZoomIn={zoomIn}
+                        onZoomOut={zoomOut}
+                        onZoomReset={resetZoom}
                         onCompile={() => void compile()}
+                        onExport={() => void exportCurrentPdf()}
                     />
                     <PdfPreview
                         url={pdfUrl()}
+                        zoom={zoom()}
                         onPageCount={count => setPageCount(count)}
                     />
                     <ErrorPanel error={error()} />
