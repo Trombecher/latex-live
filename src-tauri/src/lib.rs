@@ -1,3 +1,6 @@
+#![forbid(unsafe_code)]
+#![deny(clippy::pedantic)]
+
 mod compile;
 mod export;
 mod workspace;
@@ -45,6 +48,11 @@ async fn compile_latex(
         .map(tauri::ipc::Response::new)
 }
 
+/// Run the Tauri application.
+///
+/// # Panics
+///
+/// Panics if the Tauri application fails to start.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()

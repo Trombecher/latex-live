@@ -10,6 +10,8 @@ use tauri::ipc::{InvokeBody, Request};
 /// UTF-8 destination path and then the PDF bytes. Sending the PDF this way
 /// avoids serializing it as a JSON array of numbers.
 #[tauri::command]
+// Tauri passes command arguments by value, so these cannot be borrowed.
+#[allow(clippy::needless_pass_by_value)]
 pub fn export_pdf(request: Request<'_>) -> Result<(), String> {
     let InvokeBody::Raw(payload) = request.body() else {
         return Err("Expected raw PDF data.".to_owned());

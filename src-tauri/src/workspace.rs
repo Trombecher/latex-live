@@ -136,6 +136,8 @@ fn read_entries(root: &Path, directory: &Path) -> Result<Vec<DirEntry>, String> 
 }
 
 #[tauri::command]
+// Tauri passes command arguments by value, so these cannot be borrowed.
+#[allow(clippy::needless_pass_by_value)]
 pub fn open_workspace(
     path: String,
     state: tauri::State<'_, WorkspaceState>,
@@ -148,10 +150,10 @@ pub fn open_workspace(
     }
 
     let entries = read_entries(&root, &root)?;
-    let name = root
-        .file_name()
-        .map(|name| name.to_string_lossy().into_owned())
-        .unwrap_or_else(|| root.display().to_string());
+    let name = root.file_name().map_or_else(
+        || root.display().to_string(),
+        |name| name.to_string_lossy().into_owned(),
+    );
 
     state.set_root(root.clone())?;
 
@@ -163,6 +165,8 @@ pub fn open_workspace(
 }
 
 #[tauri::command]
+// Tauri passes command arguments by value, so these cannot be borrowed.
+#[allow(clippy::needless_pass_by_value)]
 pub fn list_workspace_directory(
     path: String,
     state: tauri::State<'_, WorkspaceState>,
@@ -178,6 +182,8 @@ pub fn list_workspace_directory(
 }
 
 #[tauri::command]
+// Tauri passes command arguments by value, so these cannot be borrowed.
+#[allow(clippy::needless_pass_by_value)]
 pub fn read_workspace_file(
     path: String,
     state: tauri::State<'_, WorkspaceState>,
@@ -196,6 +202,8 @@ pub fn read_workspace_file(
 }
 
 #[tauri::command]
+// Tauri passes command arguments by value, so these cannot be borrowed.
+#[allow(clippy::needless_pass_by_value)]
 pub fn write_workspace_file(
     path: String,
     contents: String,
