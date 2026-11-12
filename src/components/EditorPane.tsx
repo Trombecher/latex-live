@@ -13,6 +13,7 @@ interface EditorPaneProps {
     file: EditorFile | null;
     onChange: (value: string) => void;
     onSave: () => void;
+    onBlur: () => void;
     onCompile: () => void;
     onReady: (editor: monaco.editor.IStandaloneCodeEditor) => void;
 }
@@ -73,6 +74,10 @@ export function EditorPane(props: EditorPaneProps) {
             props.onChange(editor.getValue());
         });
 
+        const blurSubscription = editor.onDidBlurEditorWidget(() => {
+            props.onBlur();
+        });
+
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () =>
             props.onSave(),
         );
@@ -89,6 +94,7 @@ export function EditorPane(props: EditorPaneProps) {
 
         onCleanup(() => {
             changeSubscription.dispose();
+            blurSubscription.dispose();
             editor.setModel(null);
             model?.dispose();
             editor.dispose();

@@ -8,7 +8,6 @@ import {Logo} from "./components/Logo";
 import {PdfPreview, Spinner} from "./components/PdfPreview";
 import {PreviewToolbar} from "./components/PreviewToolbar";
 import {Sidebar} from "./components/Sidebar";
-import {Toolbar} from "./components/Toolbar";
 import {compileLatex} from "./lib/compile";
 import {errorMessage, fileName, isTexFile} from "./lib/files";
 import {
@@ -26,6 +25,7 @@ export default function App() {
     let currentPdfUrl: string | null = null;
     let savedText = "";
     let readGeneration = 0;
+    let pendingSave: Promise<void> | null = null;
 
     const [workspace, setWorkspace] = createSignal<WorkspaceInfo | null>(null);
     const [selection, setSelection] = createSignal<DirEntry | null>(null);
@@ -37,7 +37,6 @@ export default function App() {
     const [compiling, setCompiling] = createSignal(false);
     const [pdfUrl, setPdfUrl] = createSignal<string | null>(null);
     const [error, setError] = createSignal<string | null>(null);
-    const [durationMs, setDurationMs] = createSignal<number | null>(null);
     const [pageCount, setPageCount] = createSignal(0);
 
     const isTexSelected = () => {
@@ -47,8 +46,6 @@ export default function App() {
 
     const canCompile = () =>
         isTexSelected() && !loadingFile() && editorFile() !== null;
-
-    const canSave = () => isTexSelected() && dirty();
 
     const replacePdfUrl = (url: string | null) => {
         if (currentPdfUrl) {
@@ -61,7 +58,6 @@ export default function App() {
     const resetPreview = () => {
         replacePdfUrl(null);
         setError(null);
-        setDurationMs(null);
         setPageCount(0);
     };
 
@@ -76,6 +72,10 @@ export default function App() {
     };
 
     const confirmDiscard = async (): Promise<boolean> => {
+        if (pendingSave) {
+            await pendingSave;
+        }
+
         const entry = selection();
         if (!dirty() || !entry) {
             return true;
@@ -172,7 +172,7 @@ export default function App() {
         }
     };
 
-    const save = async () => {
+    const save = async (): Promise<void> => {
         const entry = selection();
         if (
             !editor
@@ -195,6 +195,20 @@ export default function App() {
         }
     };
 
+    const saveIfDirty = () => {
+        if (!dirty() || pendingSave) {
+            return;
+        }
+
+        const promise = save();
+        pendingSave = promise;
+        void promise.finally(() => {
+            if (pendingSave === promise) {
+                pendingSave = null;
+            }
+        });
+    };
+
     const compile = async () => {
         const entry = selection();
         if (
@@ -212,14 +226,11 @@ export default function App() {
         setCompiling(true);
         setError(null);
 
-        const startedAt = performance.now();
-
         try {
             const bytes = await compileLatex(editor.getValue(), entry.path);
             const blob = new Blob([bytes], {type: "application/pdf"});
 
             replacePdfUrl(URL.createObjectURL(blob));
-            setDurationMs(performance.now() - startedAt);
         } catch (cause) {
             setError(errorMessage(cause));
         } finally {
@@ -255,8 +266,12 @@ export default function App() {
 
         window.addEventListener("keydown", handleKeyDown);
 
+        const handleWindowBlur = () => saveIfDirty();
+        window.addEventListener("blur", handleWindowBlur);
+
         onCleanup(() => {
             window.removeEventListener("keydown", handleKeyDown);
+            window.removeEventListener("blur", handleWindowBlur);
         });
     });
 
@@ -268,18 +283,6 @@ export default function App() {
 
     return (
         <div class="flex h-screen flex-col overflow-hidden bg-neutral-900 text-neutral-200">
-            <Toolbar
-                hasWorkspace={workspace() !== null}
-                compiling={compiling()}
-                durationMs={durationMs()}
-                pageCount={pageCount()}
-                error={error()}
-                dirty={dirty()}
-                canSave={canSave()}
-                canCompile={canCompile()}
-                onSave={() => void save()}
-            />
-
             <main class="flex min-h-0 flex-1">
                 <Sidebar
                     workspace={workspace()}
@@ -311,6 +314,7 @@ export default function App() {
                             file={editorFile()}
                             onChange={handleEditorChange}
                             onSave={() => void save()}
+                            onBlur={saveIfDirty}
                             onCompile={() => void compile()}
                             onReady={instance => {
                                 editor = instance;
@@ -332,6 +336,7 @@ export default function App() {
                     <PreviewToolbar
                         canCompile={canCompile()}
                         compiling={compiling()}
+                        pageCount={pageCount()}
                         onCompile={() => void compile()}
                     />
                     <PdfPreview

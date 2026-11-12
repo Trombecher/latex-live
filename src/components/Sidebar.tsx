@@ -2,6 +2,7 @@ import {Show, createSignal} from "solid-js";
 
 import type {DirEntry} from "../lib/workspace";
 import {FileTree} from "./FileTree";
+import {Logo} from "./Logo";
 
 interface SidebarProps {
     workspace: {name: string; root: string} | null;
@@ -20,6 +21,13 @@ export function Sidebar(props: SidebarProps) {
 
     return (
         <aside class="flex w-60 shrink-0 flex-col border-r border-neutral-700 bg-neutral-900">
+            <div class="flex h-12 shrink-0 items-center gap-2 border-b border-neutral-700 px-3">
+                <Logo class="size-6 rounded" />
+                <span class="text-sm font-semibold tracking-tight text-neutral-100">
+                    latex-live
+                </span>
+            </div>
+
             <div class="flex h-10 shrink-0 items-center px-2">
                 <span
                     class="min-w-0 flex-1 truncate text-xs font-semibold tracking-wide text-neutral-400 uppercase"

@@ -136,7 +136,7 @@ export function FileTree(props: FileTreeProps) {
 
                             <Show when={isSelected() && props.dirty}>
                                 <span
-                                    class="size-1.5 shrink-0 rounded-full bg-amber-400"
+                                    class="size-1.5 shrink-0 rounded-full bg-blue-400"
                                     title="Unsaved changes"
                                 />
                             </Show>
