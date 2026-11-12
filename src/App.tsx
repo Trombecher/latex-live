@@ -5,6 +5,7 @@ import {EditorPane, type EditorFile} from "./components/EditorPane";
 import {ErrorPanel} from "./components/ErrorPanel";
 import {FilePlaceholder} from "./components/FilePlaceholder";
 import {Logo} from "./components/Logo";
+import {PaneSeparator} from "./components/PaneSeparator";
 import {PdfPreview, Spinner} from "./components/PdfPreview";
 import {PreviewToolbar} from "./components/PreviewToolbar";
 import {Sidebar} from "./components/Sidebar";
@@ -38,6 +39,7 @@ export default function App() {
     const [pdfUrl, setPdfUrl] = createSignal<string | null>(null);
     const [error, setError] = createSignal<string | null>(null);
     const [pageCount, setPageCount] = createSignal(0);
+    const [previewRatio, setPreviewRatio] = createSignal(0.5);
 
     const isTexSelected = () => {
         const entry = selection();
@@ -294,7 +296,7 @@ export default function App() {
                     onSelectFile={entry => void selectEntry(entry)}
                 />
 
-                <section class="relative flex w-1/2 min-w-0 flex-col border-r border-neutral-700 bg-neutral-900">
+                <section class="relative flex min-w-0 flex-1 flex-col bg-neutral-900">
                     <Show
                         when={isTexSelected()}
                         fallback={
@@ -332,7 +334,15 @@ export default function App() {
                     </Show>
                 </section>
 
-                <section class="flex min-w-0 flex-1 flex-col bg-neutral-800">
+                <PaneSeparator
+                    ratio={previewRatio()}
+                    onChange={setPreviewRatio}
+                />
+
+                <section
+                    class="flex min-w-0 flex-col bg-neutral-800"
+                    style={{width: `${previewRatio() * 100}%`}}
+                >
                     <PreviewToolbar
                         canCompile={canCompile()}
                         compiling={compiling()}
