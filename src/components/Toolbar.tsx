@@ -1,5 +1,6 @@
 import {Show} from "solid-js";
 
+import {Logo} from "./Logo";
 import {Spinner} from "./PdfPreview";
 
 interface ToolbarProps {
@@ -20,9 +21,7 @@ export function Toolbar(props: ToolbarProps) {
     return (
         <header class="flex h-12 shrink-0 items-center gap-3 border-b border-neutral-700 bg-neutral-900 px-3">
             <div class="flex shrink-0 items-center gap-2">
-                <span class="grid size-6 place-items-center rounded bg-red-600 text-[10px] font-bold text-white">
-                    TeX
-                </span>
+                <Logo class="size-6 rounded" />
                 <span class="text-sm font-semibold tracking-tight text-neutral-100">
                     latex-live
                 </span>

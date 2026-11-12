@@ -4,6 +4,7 @@ import {Show, createSignal, onCleanup, onMount} from "solid-js";
 import {EditorPane, type EditorFile} from "./components/EditorPane";
 import {ErrorPanel} from "./components/ErrorPanel";
 import {FilePlaceholder} from "./components/FilePlaceholder";
+import {Logo} from "./components/Logo";
 import {PdfPreview, Spinner} from "./components/PdfPreview";
 import {Sidebar} from "./components/Sidebar";
 import {Toolbar} from "./components/Toolbar";
@@ -340,9 +341,7 @@ function EditorEmptyState(props: {hasWorkspace: boolean}) {
     return (
         <div class="grid h-full place-items-center px-6 text-center">
             <div class="max-w-sm">
-                <div class="mx-auto mb-4 grid size-12 place-items-center rounded-lg bg-neutral-700/50 text-lg font-semibold text-neutral-400">
-                    TeX
-                </div>
+                <Logo class="mx-auto mb-4 block size-12 rounded-lg" />
                 <p class="text-sm font-medium text-neutral-300">
                     {props.hasWorkspace ? "No file selected" : "No folder open"}
                 </p>
