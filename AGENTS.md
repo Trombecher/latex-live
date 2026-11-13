@@ -20,8 +20,14 @@ To check your changes for compilation errors, run `nub run check` (and not
 
 ### Most important Nub package manager commands
 
-Interface like bun: `nub install <package>`, `nub remove <package>`,
-`nub run <script>`, ... For CLI reference: `nub --help`.
+Interface like bun:
+
+- install packages with `nub install <package>`;
+- remove packages with `nub remove <package>`;
+- run scripts with`nub run <script>`;
+- execute binaries with `nub x <binary>` (replaces `npx`).
+
+For CLI reference: `nub --help`. Do not run `npm` or `npx`.
 
 ## Backend
 
@@ -30,6 +36,9 @@ Root crate in `src-tauri`. Frameworks and libraries:
 - Rust;
 - rustfmt (format each touched Rust file);
 - `tectonic` crate for in-process XeLaTeX PDF rendering.
+
+The backend has a LOT of crates (600+) so building and testing is very slow.
+Build more sparingly.
 
 ## Git
 
