@@ -13,6 +13,9 @@ interface SidebarProps {
     error: string | null;
     onOpenFolder: () => void;
     onSelectFile: (entry: DirEntry) => void;
+    onRefreshRoot: () => Promise<void>;
+    onRenamed: (oldPath: string, newPath: string) => void;
+    onDeleted: (path: string) => void;
 }
 
 export function Sidebar(props: SidebarProps) {
@@ -65,6 +68,9 @@ export function Sidebar(props: SidebarProps) {
                         selectedPath={props.selectedPath}
                         dirty={props.dirty}
                         onSelect={props.onSelectFile}
+                        onRefreshRoot={props.onRefreshRoot}
+                        onRenamed={props.onRenamed}
+                        onDeleted={props.onDeleted}
                         onError={setTreeError}
                     />
                 </Show>

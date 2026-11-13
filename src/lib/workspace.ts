@@ -49,6 +49,45 @@ export function writeFile(path: string, contents: string): Promise<string> {
     return invoke<string>("write_workspace_file", {path, contents});
 }
 
+/**
+ * Create an empty text file inside a directory (the workspace root for an empty
+ * path) and return its relative path.
+ */
+export function createFile(directory: string, name: string): Promise<string> {
+    return invoke<string>("create_workspace_file", {directory, name});
+}
+
+/**
+ * Rename a file and return its new relative path.
+ */
+export function renameFile(path: string, name: string): Promise<string> {
+    return invoke<string>("rename_workspace_file", {path, name});
+}
+
+/**
+ * Move a file to the operating system's trash.
+ */
+export function trashFile(path: string): Promise<void> {
+    return invoke<void>("trash_workspace_file", {path});
+}
+
+export function confirmTrashFile(
+    fileName: string,
+    hasUnsavedChanges: boolean,
+): Promise<boolean> {
+    return confirm(
+        hasUnsavedChanges
+            ? `${fileName} has unsaved changes. Move it to the trash?`
+            : `Move ${fileName} to the trash?`,
+        {
+            title: "Move to trash",
+            kind: "warning",
+            okLabel: "Move to trash",
+            cancelLabel: "Cancel",
+        },
+    );
+}
+
 export function confirmDiscardChanges(fileName: string): Promise<boolean> {
     return confirm(`Discard unsaved changes to ${fileName}?`, {
         title: "Unsaved changes",

@@ -69,6 +69,28 @@ fn join_relative(root: &Path, relative: &str) -> Result<PathBuf, String> {
     Ok(root.join(relative))
 }
 
+/// Validate a single file name supplied by the user.
+///
+/// Names must not contain path separators, so they always stay in the folder
+/// they were entered for.
+fn validate_file_name(name: &str) -> Result<String, String> {
+    let name = name.trim();
+
+    if name.is_empty() {
+        return Err("Enter a file name.".to_owned());
+    }
+
+    if name == "." || name == ".." {
+        return Err("That file name is not allowed.".to_owned());
+    }
+
+    if name.contains(['/', '\\', '\0']) {
+        return Err("File names cannot contain path separators.".to_owned());
+    }
+
+    Ok(name.to_owned())
+}
+
 /// Resolve an existing path and verify that it is still inside the workspace.
 ///
 /// Canonicalization follows symlinks, so this also rejects symlinks that point
@@ -242,6 +264,100 @@ pub fn write_workspace_file(
     Ok(contents)
 }
 
+/// Create a new, empty text file inside the workspace.
+///
+/// The returned path is relative to the workspace root and uses `/`
+/// separators, matching the paths of [`DirEntry`].
+#[tauri::command]
+// Tauri passes command arguments by value, so these cannot be borrowed.
+#[allow(clippy::needless_pass_by_value)]
+pub fn create_workspace_file(
+    directory: String,
+    name: String,
+    state: tauri::State<'_, WorkspaceState>,
+) -> Result<String, String> {
+    let root = state.root()?;
+    let directory = resolve_existing(&root, &directory)?;
+
+    if !directory.is_dir() {
+        return Err("New files can only be created inside a folder.".to_owned());
+    }
+
+    let name = validate_file_name(&name)?;
+    let path = directory.join(&name);
+
+    fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&path)
+        .map_err(|error| {
+            if error.kind() == std::io::ErrorKind::AlreadyExists {
+                format!("{name:?} already exists in this folder.")
+            } else {
+                format!("Failed to create {name:?}: {error}")
+            }
+        })?;
+
+    Ok(relative_path(&root, &path))
+}
+
+/// Rename a file inside the workspace and return its new relative path.
+#[tauri::command]
+// Tauri passes command arguments by value, so these cannot be borrowed.
+#[allow(clippy::needless_pass_by_value)]
+pub fn rename_workspace_file(
+    path: String,
+    name: String,
+    state: tauri::State<'_, WorkspaceState>,
+) -> Result<String, String> {
+    let root = state.root()?;
+    let file = resolve_existing(&root, &path)?;
+
+    if !file.is_file() {
+        return Err("Only files can be renamed.".to_owned());
+    }
+
+    let name = validate_file_name(&name)?;
+    let parent = file
+        .parent()
+        .ok_or_else(|| "The file has no parent folder.".to_owned())?;
+    let target = parent.join(&name);
+
+    if file.file_name().and_then(|current| current.to_str()) == Some(name.as_str()) {
+        return Ok(relative_path(&root, &file));
+    }
+
+    // `canonicalize` succeeding means the target exists. A case-only rename on
+    // a case-insensitive filesystem resolves to the same file and is allowed.
+    if let Ok(existing) = fs::canonicalize(&target)
+        && existing != file
+    {
+        return Err(format!("{name:?} already exists in this folder."));
+    }
+
+    fs::rename(&file, &target).map_err(|error| format!("Failed to rename {path:?}: {error}"))?;
+
+    Ok(relative_path(&root, &target))
+}
+
+/// Move a file inside the workspace to the operating system's trash.
+#[tauri::command]
+// Tauri passes command arguments by value, so these cannot be borrowed.
+#[allow(clippy::needless_pass_by_value)]
+pub fn trash_workspace_file(
+    path: String,
+    state: tauri::State<'_, WorkspaceState>,
+) -> Result<(), String> {
+    let root = state.root()?;
+    let file = resolve_existing(&root, &path)?;
+
+    if !file.is_file() {
+        return Err("Only files can be deleted.".to_owned());
+    }
+
+    trash::delete(&file).map_err(|error| format!("Failed to delete {path:?}: {error}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -278,5 +394,24 @@ mod tests {
             "chapters/intro.tex"
         );
         assert_eq!(relative_path(root, root), "");
+    }
+
+    #[test]
+    fn trims_and_accepts_plain_file_names() {
+        assert_eq!(validate_file_name("  main.tex  ").unwrap(), "main.tex");
+        assert_eq!(
+            validate_file_name("notes with spaces.txt").unwrap(),
+            "notes with spaces.txt"
+        );
+    }
+
+    #[test]
+    fn rejects_file_names_with_path_components() {
+        assert!(validate_file_name("").is_err());
+        assert!(validate_file_name("   ").is_err());
+        assert!(validate_file_name(".").is_err());
+        assert!(validate_file_name("..").is_err());
+        assert!(validate_file_name("chapters/intro.tex").is_err());
+        assert!(validate_file_name(r"chapters\intro.tex").is_err());
     }
 }

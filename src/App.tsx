@@ -16,6 +16,7 @@ import {errorMessage, fileName, isTexFile} from "./lib/files";
 import {
     chooseWorkspaceDirectory,
     confirmDiscardChanges,
+    listDirectory,
     openWorkspace,
     readFile,
     writeFile,
@@ -321,6 +322,29 @@ export default function App() {
         setDirty(text !== savedText);
     };
 
+    const refreshRootEntries = async () => {
+        if (!workspace()) {
+            return;
+        }
+
+        const entries = await listDirectory("");
+        setWorkspace(current => (current ? {...current, entries} : current));
+    };
+
+    const handleRenamed = (oldPath: string, newPath: string) => {
+        setSelection(current =>
+            current?.path === oldPath
+                ? {...current, path: newPath, name: fileName(newPath)}
+                : current,
+        );
+    };
+
+    const handleDeleted = (path: string) => {
+        if (selection()?.path === path) {
+            clearCurrentFile();
+        }
+    };
+
     onMount(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if (!(event.ctrlKey || event.metaKey)) {
@@ -371,6 +395,9 @@ export default function App() {
                     error={fileError()}
                     onOpenFolder={() => void openFolder()}
                     onSelectFile={entry => void selectEntry(entry)}
+                    onRefreshRoot={refreshRootEntries}
+                    onRenamed={handleRenamed}
+                    onDeleted={handleDeleted}
                 />
 
                 <section class="relative flex min-w-0 flex-1 flex-col bg-neutral-900">
