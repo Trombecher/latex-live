@@ -23,6 +23,7 @@ tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+tex-fmt = "0.5.7"
 tectonic = { path = "D:\\Coding\\Cloned\\contribute-tectonic", features = [
     "external-harfbuzz",
 ] }
@@ -33,7 +34,8 @@ tectonic_bundles = { path = "D:\\Coding\\Cloned\\contribute-tectonic\\crates\\bu
 codegen-units = 1
 lto = true
 opt-level = 3
-panic = "abort"
+# `panic = "abort"` is intentionally not set: LaTeX formatting catches panics
+# from `tex-fmt` so that a formatter bug cannot take down the editor.
 strip = true
 
 [package.metadata.vcpkg]

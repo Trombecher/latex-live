@@ -85,6 +85,15 @@ pub(crate) fn resolve_existing(root: &Path, relative: &str) -> Result<PathBuf, S
     Ok(resolved)
 }
 
+/// Whether a path is a LaTeX source file.
+pub(crate) fn is_latex_file(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| {
+            extension.eq_ignore_ascii_case("tex") || extension.eq_ignore_ascii_case("latex")
+        })
+}
+
 /// Convert an absolute path into the `/`-separated form used by the frontend.
 fn relative_path(root: &Path, path: &Path) -> String {
     path.strip_prefix(root)
@@ -201,6 +210,11 @@ pub fn read_workspace_file(
     String::from_utf8(bytes).map_err(|_| "This file is not valid UTF-8 text.".to_owned())
 }
 
+/// Save a file inside the workspace.
+///
+/// LaTeX sources are formatted with `tex-fmt` before they are written. The
+/// text that was actually written is returned so the frontend can apply the
+/// formatted source to the open editor.
 #[tauri::command]
 // Tauri passes command arguments by value, so these cannot be borrowed.
 #[allow(clippy::needless_pass_by_value)]
@@ -208,7 +222,7 @@ pub fn write_workspace_file(
     path: String,
     contents: String,
     state: tauri::State<'_, WorkspaceState>,
-) -> Result<(), String> {
+) -> Result<String, String> {
     let root = state.root()?;
     let file = resolve_existing(&root, &path)?;
 
@@ -216,8 +230,16 @@ pub fn write_workspace_file(
         return Err("Only existing files can be saved.".to_owned());
     }
 
-    fs::write(&file, contents)
-        .map_err(|error| format!("Failed to save {}: {error}", file.display()))
+    let contents = if is_latex_file(&file) {
+        crate::format::format_latex(&contents)
+    } else {
+        contents
+    };
+
+    fs::write(&file, &contents)
+        .map_err(|error| format!("Failed to save {}: {error}", file.display()))?;
+
+    Ok(contents)
 }
 
 #[cfg(test)]

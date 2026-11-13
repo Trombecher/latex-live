@@ -41,8 +41,12 @@ export function readFile(path: string): Promise<string> {
     return invoke<string>("read_workspace_file", {path});
 }
 
-export function writeFile(path: string, contents: string): Promise<void> {
-    return invoke<void>("write_workspace_file", {path, contents});
+/**
+ * Save a file. LaTeX sources are formatted before they are written, and the
+ * text that ended up on disk is returned so the editor can be updated.
+ */
+export function writeFile(path: string, contents: string): Promise<string> {
+    return invoke<string>("write_workspace_file", {path, contents});
 }
 
 export function confirmDiscardChanges(fileName: string): Promise<boolean> {

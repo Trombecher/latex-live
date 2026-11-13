@@ -180,6 +180,30 @@ export default function App() {
         }
     };
 
+    /**
+     * Replace the whole editor buffer as a single undoable edit, keeping the
+     * caret roughly in place.
+     */
+    const replaceEditorText = (text: string) => {
+        const model = editor?.getModel();
+        if (!editor || !model) {
+            return;
+        }
+
+        const position = editor.getPosition();
+        const offset = position ? model.getOffsetAt(position) : 0;
+
+        editor.pushUndoStop();
+        editor.executeEdits("tex-fmt", [
+            {range: model.getFullModelRange(), text},
+        ]);
+        editor.pushUndoStop();
+
+        editor.setPosition(
+            model.getPositionAt(Math.min(offset, model.getValueLength())),
+        );
+    };
+
     const save = async (): Promise<void> => {
         const entry = selection();
         if (
@@ -192,10 +216,23 @@ export default function App() {
             return;
         }
 
+        const text = editor.getValue();
+
         try {
-            const text = editor.getValue();
-            await writeFile(entry.path, text);
-            savedText = text;
+            const saved = await writeFile(entry.path, text);
+
+            if (selection()?.path !== entry.path) {
+                return;
+            }
+
+            savedText = saved;
+
+            // The backend formats LaTeX before writing. Only mirror that in the
+            // editor when the buffer has not changed during the save.
+            if (saved !== text && editor.getValue() === text) {
+                replaceEditorText(saved);
+            }
+
             setDirty(editor.getValue() !== savedText);
             setFileError(null);
         } catch (cause) {

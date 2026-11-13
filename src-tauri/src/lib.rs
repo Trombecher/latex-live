@@ -3,6 +3,7 @@
 
 mod compile;
 mod export;
+mod format;
 mod workspace;
 
 use workspace::WorkspaceState;
@@ -25,14 +26,7 @@ async fn compile_latex(
         return Err("The selected path is not a file.".to_owned());
     }
 
-    let is_latex = file
-        .extension()
-        .and_then(|extension| extension.to_str())
-        .is_some_and(|extension| {
-            extension.eq_ignore_ascii_case("tex") || extension.eq_ignore_ascii_case("latex")
-        });
-
-    if !is_latex {
+    if !workspace::is_latex_file(&file) {
         return Err("Only .tex files can be compiled.".to_owned());
     }
 
