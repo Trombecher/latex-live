@@ -1,4 +1,5 @@
 import {Button} from "@kobalte/core/button";
+import FolderOpenIcon from "lucide-solid/icons/folder-open";
 import {Show, createSignal} from "solid-js";
 
 import type {DirEntry} from "../lib/workspace";
@@ -46,7 +47,7 @@ export function Sidebar(props: SidebarProps) {
                     class="inline-flex h-8 w-full items-center justify-center gap-2 rounded-md border border-neutral-700 bg-neutral-800 px-3 text-sm font-medium text-neutral-200 transition hover:border-neutral-600 hover:bg-neutral-700"
                     onClick={props.onOpenFolder}
                 >
-                    <FolderOpenIcon />
+                    <FolderOpenIcon class="size-4" aria-hidden="true" />
                     {props.workspace ? "Change Folder" : "Open Folder"}
                 </Button>
             </div>
@@ -82,19 +83,5 @@ export function Sidebar(props: SidebarProps) {
                 </div>
             </Show>
         </aside>
-    );
-}
-
-function FolderOpenIcon() {
-    return (
-        <svg
-            viewBox="0 0 16 16"
-            class="size-4"
-            fill="currentColor"
-            aria-hidden="true"
-        >
-            <path d="M1.5 3.25c0-.69.56-1.25 1.25-1.25h3.2c.33 0 .65.13.88.37l.96.96c.1.1.23.17.37.17h5.09c.69 0 1.25.56 1.25 1.25v.75H2.75c-.69 0-1.25.56-1.25 1.25v-3.5Z" />
-            <path d="M1.5 6.5c0-.69.56-1.25 1.25-1.25h11.5c.69 0 1.25.56 1.25 1.25v6.25c0 .69-.56 1.25-1.25 1.25H2.75c-.69 0-1.25-.56-1.25-1.25V6.5Z" />
-        </svg>
     );
 }

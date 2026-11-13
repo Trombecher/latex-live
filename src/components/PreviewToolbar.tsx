@@ -1,5 +1,9 @@
 import {Button} from "@kobalte/core/button";
 import {Tooltip} from "@kobalte/core/tooltip";
+import DownloadIcon from "lucide-solid/icons/download";
+import MinusIcon from "lucide-solid/icons/minus";
+import PlayIcon from "lucide-solid/icons/play";
+import PlusIcon from "lucide-solid/icons/plus";
 import {Show, type JSX} from "solid-js";
 
 import {Spinner} from "./PdfPreview";
@@ -27,7 +31,7 @@ export function PreviewToolbar(props: PreviewToolbarProps) {
                 <Show when={props.pageCount > 0}>
                     <div class="flex items-center gap-1">
                         <ZoomButton label="Zoom out" onClick={props.onZoomOut}>
-                            <MinusIcon />
+                            <MinusIcon class="size-3.5" aria-hidden="true" />
                         </ZoomButton>
                         <TooltipButton
                             label="Reset zoom"
@@ -37,7 +41,7 @@ export function PreviewToolbar(props: PreviewToolbarProps) {
                             {Math.round(props.zoom * 100)}%
                         </TooltipButton>
                         <ZoomButton label="Zoom in" onClick={props.onZoomIn}>
-                            <PlusIcon />
+                            <PlusIcon class="size-3.5" aria-hidden="true" />
                         </ZoomButton>
                     </div>
 
@@ -52,7 +56,7 @@ export function PreviewToolbar(props: PreviewToolbarProps) {
                         aria-label="Export PDF"
                         onClick={props.onExport}
                     >
-                        <DownloadIcon />
+                        <DownloadIcon class="size-3.5" aria-hidden="true" />
                         <span class="hidden @sm:inline">Export</span>
                     </Button>
                 </Show>
@@ -72,7 +76,12 @@ export function PreviewToolbar(props: PreviewToolbarProps) {
                         >
                             <Show
                                 when={props.compiling}
-                                fallback={<PlayIcon />}
+                                fallback={
+                                    <PlayIcon
+                                        class="size-3.5"
+                                        aria-hidden="true"
+                                    />
+                                }
                             >
                                 <Spinner />
                             </Show>
@@ -125,67 +134,5 @@ function TooltipButton(props: {
                 </Tooltip.Content>
             </Tooltip.Portal>
         </Tooltip>
-    );
-}
-
-function MinusIcon() {
-    return (
-        <svg
-            viewBox="0 0 16 16"
-            class="size-3.5"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            aria-hidden="true"
-        >
-            <path d="M3.5 8h9" />
-        </svg>
-    );
-}
-
-function PlusIcon() {
-    return (
-        <svg
-            viewBox="0 0 16 16"
-            class="size-3.5"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            aria-hidden="true"
-        >
-            <path d="M8 3.5v9M3.5 8h9" />
-        </svg>
-    );
-}
-
-function DownloadIcon() {
-    return (
-        <svg
-            viewBox="0 0 16 16"
-            class="size-3.5"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-        >
-            <path d="M8 2.5v7m0 0 2.75-2.75M8 9.5 5.25 6.75M2.5 11.5v1.25c0 .41.34.75.75.75h9.5c.41 0 .75-.34.75-.75V11.5" />
-        </svg>
-    );
-}
-
-function PlayIcon() {
-    return (
-        <svg
-            viewBox="0 0 16 16"
-            class="size-3.5"
-            fill="currentColor"
-            aria-hidden="true"
-        >
-            <path d="M4.5 2.8v10.4c0 .5.5.8.9.5l8-5.2a.6.6 0 0 0 0-1L5.4 2.3a.6.6 0 0 0-.9.5Z" />
-        </svg>
     );
 }

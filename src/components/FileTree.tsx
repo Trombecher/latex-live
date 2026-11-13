@@ -1,5 +1,8 @@
 import {Button} from "@kobalte/core/button";
 import {ContextMenu} from "@kobalte/core/context-menu";
+import ChevronRightIcon from "lucide-solid/icons/chevron-right";
+import FileIcon from "lucide-solid/icons/file";
+import FolderIcon from "lucide-solid/icons/folder";
 import {For, Show, createEffect, createMemo, createSignal, on} from "solid-js";
 
 import {errorMessage, isTexFile} from "../lib/files";
@@ -290,10 +293,14 @@ export function FileTree(props: FileTreeProps) {
                                     when={row.entry.isDir}
                                     fallback={<span class="size-4 shrink-0" />}
                                 >
-                                    <ChevronIcon
-                                        open={Boolean(
-                                            expanded()[row.entry.path],
-                                        )}
+                                    <ChevronRightIcon
+                                        class="size-4 shrink-0 text-neutral-500 transition-transform"
+                                        classList={{
+                                            "rotate-90": Boolean(
+                                                expanded()[row.entry.path],
+                                            ),
+                                        }}
+                                        aria-hidden="true"
                                     />
                                 </Show>
 
@@ -372,14 +379,10 @@ export function FileTree(props: FileTreeProps) {
 function EntryIcon(props: {entry: DirEntry}) {
     if (props.entry.isDir) {
         return (
-            <svg
-                viewBox="0 0 16 16"
+            <FolderIcon
                 class="size-4 shrink-0 text-neutral-500"
-                fill="currentColor"
                 aria-hidden="true"
-            >
-                <path d="M1.5 3.25c0-.69.56-1.25 1.25-1.25h3.2c.33 0 .65.13.88.37l.96.96c.1.1.23.17.37.17h5.09c.69 0 1.25.56 1.25 1.25v7.75c0 .69-.56 1.25-1.25 1.25H2.75c-.69 0-1.25-.56-1.25-1.25V3.25Z" />
-            </svg>
+            />
         );
     }
 
@@ -392,27 +395,6 @@ function EntryIcon(props: {entry: DirEntry}) {
     }
 
     return (
-        <svg
-            viewBox="0 0 16 16"
-            class="size-4 shrink-0 text-neutral-500"
-            fill="currentColor"
-            aria-hidden="true"
-        >
-            <path d="M4 1.75C4 1.34 4.34 1 4.75 1h4.19c.2 0 .39.08.53.22l3.31 3.31c.14.14.22.33.22.53v9.19c0 .41-.34.75-.75.75h-7.5a.75.75 0 0 1-.75-.75V1.75Z" />
-        </svg>
-    );
-}
-
-function ChevronIcon(props: {open: boolean}) {
-    return (
-        <svg
-            viewBox="0 0 16 16"
-            class="size-4 shrink-0 text-neutral-500 transition-transform"
-            classList={{"rotate-90": props.open}}
-            fill="currentColor"
-            aria-hidden="true"
-        >
-            <path d="M6 3.5 10.5 8 6 12.5V3.5Z" />
-        </svg>
+        <FileIcon class="size-4 shrink-0 text-neutral-500" aria-hidden="true" />
     );
 }
