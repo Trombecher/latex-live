@@ -12,6 +12,7 @@ Root in `.`, source in `src`. Frameworks and libraries:
 - TailwindCSS;
 - oxfmt (format each touched non-.rs file);
 - oxlint;
+- lucide-solid (for icons);
 - Kobalte UI for unstyled, accessible components;
 - `nub` as the package manager.
 
@@ -19,16 +20,24 @@ To format and fix oxlint issues, run `nub run format`. To check your changes for
 compilation errors, run `nub run check` (and not `nub run build`). It checks
 TypeScript errors and linting errors.
 
+### Lucide Import Style
+
+Do not import directly from `"lucide-solid"`, instead import from
+`"lucide-solid/icons/<icon>"` to prevent the whole lucide library from being
+loaded into the web in development. All component icons imported must have a
+suffix of `Icon`.
+
 ### Most important Nub package manager commands
 
-Interface like bun:
+Nub has a CLI like bun:
 
 - install packages with `nub install <package>`;
 - remove packages with `nub remove <package>`;
 - run scripts with`nub run <script>`;
 - execute binaries with `nub x <binary>` (replaces `npx`).
 
-For CLI reference: `nub --help`. Do not run `npm` or `npx`.
+For CLI reference: `nub --help`. Do not run `npm` or `npx` or any other package
+manager.
 
 ## Backend
 
