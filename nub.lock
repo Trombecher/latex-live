@@ -42,6 +42,9 @@ importers:
       oxlint:
         specifier: ^1.93.0
         version: 1.93.0
+      oxlint-tailwindcss:
+        specifier: ^1.17.1
+        version: 1.17.1
       tailwindcss:
         specifier: ^4.3.5
         version: 4.3.5
@@ -1237,6 +1240,10 @@ packages:
       vite-plus:
         optional: true
 
+  oxlint-tailwindcss@1.17.1:
+    resolution: {integrity: sha512-fIsTVO97ruLU7GK8mNfQiE0TsjcnOccVz/w+C/lvbo54Hb/0ZZvT4cw3a0TCxM/buREd09enI+h7zfm6cG8OzA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+
   oxlint@1.93.0:
     resolution: {integrity: sha512-19JMsQFX+YvEbcUTFQxjTwhvs0Ibg0D6CFneSLgpwnACWcY/6LjhpGpkPodh0T5aIT1pjMTLlYaeBFzaVgugTA==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2285,6 +2292,11 @@ snapshots:
       '@oxfmt/binding-win32-arm64-msvc': 0.78.0
       '@oxfmt/binding-win32-ia32-msvc': 0.78.0
       '@oxfmt/binding-win32-x64-msvc': 0.78.0
+
+  oxlint-tailwindcss@1.17.1:
+    dependencies:
+      '@tailwindcss/node': 4.3.5
+      tailwindcss: 4.3.5
 
   oxlint@1.93.0:
     optionalDependencies:

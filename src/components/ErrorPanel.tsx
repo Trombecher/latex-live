@@ -9,7 +9,7 @@ export function ErrorPanel(props: {error: string | null}) {
                         Compilation failed
                     </span>
                 </div>
-                <pre class="px-3 py-3 font-mono text-xs leading-relaxed break-words whitespace-pre-wrap text-red-100/90">
+                <pre class="p-3 font-mono text-xs leading-relaxed wrap-break-word whitespace-pre-wrap text-red-100/90">
                     {props.error}
                 </pre>
             </section>
