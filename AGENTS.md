@@ -1,16 +1,37 @@
 # Latex Live Agent Information
 
-This should be a desktop app to edit and compile latex. It is a Tauri V2 app.
+This is a crossplatform desktop app to edit and compile latex. It is a Tauri V2
+app.
 
 ## Frontend
 
-SolidJS, TailwindCSS, oxfmt, oxlint.
+Root in `.`, source in `src`. Frameworks and libraries:
+
+- Vite;
+- SolidJS;
+- TailwindCSS;
+- oxfmt (format each touched non-.rs file);
+- oxlint;
+- Kobalte UI for unstyled, accessible components;
+- `nub` as the package manager.
+
+To check your changes for compilation errors, run `nub run check` (and not
+`nub run build`). It checks TypeScript errors and linting errors.
+
+### Most important Nub package manager commands
+
+Interface like bun: `nub install <package>`, `nub remove <package>`,
+`nub run <script>`, ... For CLI reference: `nub --help`.
 
 ## Backend
 
-Rust, rustfmt. Render latex pdfs via the `tectonic` crate.
+Root crate in `src-tauri`. Frameworks and libraries:
+
+- Rust;
+- rustfmt (format each touched Rust file);
+- `tectonic` crate for in-process XeLaTeX PDF rendering.
 
 ## Git
 
-Do not stage changes from `src-tauri/Cargo.toml` nor from `src-tauri/Cargo.lock`
-if not explicitily said.
+**On Windows**, do not stage changes from `src-tauri/Cargo.toml` nor from
+`src-tauri/Cargo.lock` if not explicitily said.
