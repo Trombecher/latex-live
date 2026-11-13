@@ -1,3 +1,4 @@
+import {Button} from "@kobalte/core/button";
 import {Show, createSignal} from "solid-js";
 
 import type {DirEntry} from "../lib/workspace";
@@ -38,14 +39,13 @@ export function Sidebar(props: SidebarProps) {
             </div>
 
             <div class="shrink-0 border-b border-neutral-700 p-2">
-                <button
-                    type="button"
+                <Button
                     class="inline-flex h-8 w-full items-center justify-center gap-2 rounded-md border border-neutral-700 bg-neutral-800 px-3 text-sm font-medium text-neutral-200 transition hover:border-neutral-600 hover:bg-neutral-700"
                     onClick={props.onOpenFolder}
                 >
                     <FolderOpenIcon />
                     {props.workspace ? "Change Folder" : "Open Folder"}
-                </button>
+                </Button>
             </div>
 
             <div class="min-h-0 flex-1 overflow-auto">

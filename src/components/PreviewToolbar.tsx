@@ -1,3 +1,5 @@
+import {Button} from "@kobalte/core/button";
+import {Tooltip} from "@kobalte/core/tooltip";
 import {Show, type JSX} from "solid-js";
 
 import {Spinner} from "./PdfPreview";
@@ -27,14 +29,13 @@ export function PreviewToolbar(props: PreviewToolbarProps) {
                         <ZoomButton label="Zoom out" onClick={props.onZoomOut}>
                             <MinusIcon />
                         </ZoomButton>
-                        <button
-                            type="button"
+                        <TooltipButton
+                            label="Reset zoom"
                             class="inline-flex h-7 min-w-12 items-center justify-center rounded-md px-1.5 text-[11px] text-neutral-300 tabular-nums transition hover:bg-neutral-700"
-                            title="Reset zoom (Ctrl + scroll or pinch to zoom)"
                             onClick={props.onZoomReset}
                         >
                             {Math.round(props.zoom * 100)}%
-                        </button>
+                        </TooltipButton>
                         <ZoomButton label="Zoom in" onClick={props.onZoomIn}>
                             <PlusIcon />
                         </ZoomButton>
@@ -45,8 +46,7 @@ export function PreviewToolbar(props: PreviewToolbarProps) {
                         {props.pageCount === 1 ? "page" : "pages"}
                     </span>
 
-                    <button
-                        type="button"
+                    <Button
                         class="inline-flex h-7 items-center gap-1.5 rounded-md border border-neutral-700 bg-neutral-800 px-2.5 text-xs font-medium text-neutral-200 transition hover:border-neutral-600 hover:bg-neutral-700"
                         title="Export PDF"
                         aria-label="Export PDF"
@@ -54,7 +54,7 @@ export function PreviewToolbar(props: PreviewToolbarProps) {
                     >
                         <DownloadIcon />
                         <span class="hidden @sm:inline">Export</span>
-                    </button>
+                    </Button>
                 </Show>
 
                 <Show when={props.canCompile}>
@@ -62,8 +62,7 @@ export function PreviewToolbar(props: PreviewToolbarProps) {
                         <kbd class="hidden rounded border border-neutral-700 bg-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-400 @lg:inline">
                             Ctrl/Cmd + Enter
                         </kbd>
-                        <button
-                            type="button"
+                        <Button
                             class="inline-flex h-7 items-center gap-2 rounded-md bg-blue-600 px-2.5 text-xs font-medium text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-blue-900 disabled:text-blue-200"
                             disabled={props.compiling}
                             aria-label={
@@ -80,7 +79,7 @@ export function PreviewToolbar(props: PreviewToolbarProps) {
                             <span class="hidden @min-[22rem]:inline">
                                 {props.compiling ? "Compiling…" : "Compile"}
                             </span>
-                        </button>
+                        </Button>
                     </div>
                 </Show>
             </div>
@@ -94,15 +93,38 @@ function ZoomButton(props: {
     children: JSX.Element;
 }) {
     return (
-        <button
-            type="button"
+        <TooltipButton
+            label={props.label}
             class="inline-flex size-7 items-center justify-center rounded-md border border-neutral-700 bg-neutral-800 text-neutral-300 transition hover:border-neutral-600 hover:bg-neutral-700"
-            title={props.label}
-            aria-label={props.label}
             onClick={props.onClick}
         >
             {props.children}
-        </button>
+        </TooltipButton>
+    );
+}
+
+function TooltipButton(props: {
+    label: string;
+    class: string;
+    onClick: () => void;
+    children: JSX.Element;
+}) {
+    return (
+        <Tooltip openDelay={400}>
+            <Tooltip.Trigger
+                as={Button}
+                class={props.class}
+                aria-label={props.label}
+                onClick={props.onClick}
+            >
+                {props.children}
+            </Tooltip.Trigger>
+            <Tooltip.Portal>
+                <Tooltip.Content class="z-50 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-[11px] text-neutral-200 shadow-lg">
+                    {props.label}
+                </Tooltip.Content>
+            </Tooltip.Portal>
+        </Tooltip>
     );
 }
 

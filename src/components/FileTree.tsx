@@ -1,3 +1,4 @@
+import {Button} from "@kobalte/core/button";
 import {For, Show, createEffect, createMemo, createSignal, on} from "solid-js";
 
 import {errorMessage, isTexFile} from "../lib/files";
@@ -89,7 +90,7 @@ export function FileTree(props: FileTreeProps) {
     };
 
     return (
-        <div role="tree" class="py-1">
+        <div role="tree" aria-label="Workspace files" class="py-1">
             <For each={rows()}>
                 {row => {
                     const isSelected = () =>
@@ -97,8 +98,7 @@ export function FileTree(props: FileTreeProps) {
                         && props.selectedPath === row.entry.path;
 
                     return (
-                        <button
-                            type="button"
+                        <Button
                             role="treeitem"
                             aria-selected={isSelected()}
                             aria-expanded={
@@ -140,7 +140,7 @@ export function FileTree(props: FileTreeProps) {
                                     title="Unsaved changes"
                                 />
                             </Show>
-                        </button>
+                        </Button>
                     );
                 }}
             </For>

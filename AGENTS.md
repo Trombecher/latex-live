@@ -9,3 +9,8 @@ SolidJS, TailwindCSS, oxfmt, oxlint.
 ## Backend
 
 Rust, rustfmt. Render latex pdfs via the `tectonic` crate.
+
+## Git
+
+Do not stage changes from `src-tauri/Cargo.toml` nor from `src-tauri/Cargo.lock`
+if not explicitily said.
