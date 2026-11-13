@@ -77,7 +77,7 @@ export function Sidebar(props: SidebarProps) {
             </div>
 
             <Show when={shownError()}>
-                <div class="shrink-0 border-t border-red-500/30 bg-red-950/40 px-2 py-2 text-xs leading-snug wrap-break-word text-red-200">
+                <div class="shrink-0 border-t border-red-500/30 bg-red-950/40 p-2 text-xs leading-snug wrap-break-word text-red-200">
                     {shownError()}
                 </div>
             </Show>

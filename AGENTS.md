@@ -15,8 +15,9 @@ Root in `.`, source in `src`. Frameworks and libraries:
 - Kobalte UI for unstyled, accessible components;
 - `nub` as the package manager.
 
-To check your changes for compilation errors, run `nub run check` (and not
-`nub run build`). It checks TypeScript errors and linting errors.
+To format and fix oxlint issues, run `nub run format`. To check your changes for
+compilation errors, run `nub run check` (and not `nub run build`). It checks
+TypeScript errors and linting errors.
 
 ### Most important Nub package manager commands
 

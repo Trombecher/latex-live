@@ -108,7 +108,7 @@ export function EditorPane(props: EditorPaneProps) {
             ref={element => {
                 host = element;
             }}
-            class="h-full min-h-0 w-full"
+            class="size-full min-h-0"
         />
     );
 }

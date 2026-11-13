@@ -10,6 +10,7 @@
         "build": "vite build",
         "serve": "vite preview",
         "tauri": "tauri",
+        "format": "oxfmt && oxlint --fix",
         "check": "tsc --noEmit && oxlint",
         "regenerate-icon": "tauri icon src/icon.svg"
     },

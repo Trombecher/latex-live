@@ -322,7 +322,7 @@ export function FileTree(props: FileTreeProps) {
             <ContextMenu.Portal>
                 <ContextMenu.Content class="z-50 min-w-44 rounded-md border border-neutral-700 bg-neutral-800 p-1 text-sm shadow-xl outline-none">
                     <ContextMenu.Item
-                        class="flex h-8 cursor-default items-center rounded-sm px-2 text-neutral-200 outline-none data-[highlighted]:bg-neutral-700"
+                        class="flex h-8 cursor-default items-center rounded-sm px-2 text-neutral-200 outline-none data-highlighted:bg-neutral-700"
                         onSelect={startCreate}
                     >
                         <ContextMenu.ItemLabel>New File</ContextMenu.ItemLabel>
@@ -331,7 +331,7 @@ export function FileTree(props: FileTreeProps) {
                     <Show when={contextEntry() && !contextEntry()?.isDir}>
                         <ContextMenu.Separator class="my-1 h-px bg-neutral-700" />
                         <ContextMenu.Item
-                            class="flex h-8 cursor-default items-center rounded-sm px-2 text-neutral-200 outline-none data-[highlighted]:bg-neutral-700"
+                            class="flex h-8 cursor-default items-center rounded-sm px-2 text-neutral-200 outline-none data-highlighted:bg-neutral-700"
                             onSelect={startRename}
                         >
                             <ContextMenu.ItemLabel>
@@ -339,7 +339,7 @@ export function FileTree(props: FileTreeProps) {
                             </ContextMenu.ItemLabel>
                         </ContextMenu.Item>
                         <ContextMenu.Item
-                            class="flex h-8 cursor-default items-center rounded-sm px-2 text-red-300 outline-none data-[highlighted]:bg-red-950/60"
+                            class="flex h-8 cursor-default items-center rounded-sm px-2 text-red-300 outline-none data-highlighted:bg-red-950/60"
                             onSelect={() => void trashEntry()}
                         >
                             <ContextMenu.ItemLabel>
