@@ -6,6 +6,7 @@ interface NameDialogProps {
     open: boolean;
     title: string;
     description: string;
+    fieldLabel: string;
     initialName: string;
     confirmLabel: string;
     busy: boolean;
@@ -15,7 +16,7 @@ interface NameDialogProps {
 }
 
 /**
- * Single-field dialog used to create and rename files.
+ * Single-field dialog used to create and rename files and folders.
  */
 export function NameDialog(props: NameDialogProps) {
     const inputId = createUniqueId();
@@ -83,7 +84,7 @@ export function NameDialog(props: NameDialogProps) {
                             for={inputId}
                             class="block text-xs font-medium text-surface-600"
                         >
-                            File name
+                            {props.fieldLabel}
                         </label>
                         <input
                             id={inputId}

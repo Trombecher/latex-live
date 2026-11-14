@@ -58,6 +58,14 @@ export function createFile(directory: string, name: string): Promise<string> {
 }
 
 /**
+ * Create an empty folder inside a directory (the workspace root for an empty
+ * path) and return its relative path.
+ */
+export function createFolder(directory: string, name: string): Promise<string> {
+    return invoke<string>("create_workspace_folder", {directory, name});
+}
+
+/**
  * Rename a file and return its new relative path.
  */
 export function renameFile(path: string, name: string): Promise<string> {
