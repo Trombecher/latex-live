@@ -4,6 +4,7 @@
 mod compile;
 mod export;
 mod format;
+mod git;
 mod workspace;
 
 use workspace::WorkspaceState;
@@ -64,6 +65,11 @@ pub fn run() {
             workspace::create_workspace_folder,
             workspace::rename_workspace_file,
             workspace::trash_workspace_entry,
+            git::git_status,
+            git::git_init,
+            git::git_set_origin,
+            git::git_commit_push,
+            git::git_fetch_pull,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -276,6 +276,24 @@ export default function App() {
         });
     };
 
+    /**
+     * Save pending editor changes before a Git operation touches the working
+     * tree. Returns false when the save failed.
+     */
+    const prepareGitAction = async (): Promise<boolean> => {
+        saveIfDirty();
+
+        if (pendingSave) {
+            await pendingSave;
+        }
+
+        return !dirty();
+    };
+
+    const openGitFile = (path: string) => {
+        void selectEntry({name: fileName(path), path, isDir: false});
+    };
+
     const compile = async () => {
         const entry = selection();
         if (
@@ -426,6 +444,8 @@ export default function App() {
                     onRefreshRoot={refreshRootEntries}
                     onRenamed={handleRenamed}
                     onDeleted={handleDeleted}
+                    onGitOpenFile={openGitFile}
+                    onBeforeGitAction={prepareGitAction}
                 />
 
                 <section class="relative flex min-w-0 flex-1 flex-col bg-surface-100">
