@@ -330,9 +330,9 @@ export function FileTree(props: FileTreeProps) {
             </ContextMenu.Trigger>
 
             <ContextMenu.Portal>
-                <ContextMenu.Content class="z-50 min-w-44 rounded-md border border-surface-300 bg-surface-200 p-1 text-sm shadow-xl outline-none">
+                <ContextMenu.Content class="z-50 min-w-44 rounded-xl border border-surface-300 bg-surface-200 p-1 text-sm shadow-xl outline-none">
                     <ContextMenu.Item
-                        class="flex h-8 cursor-default items-center gap-2 rounded-sm px-2 text-surface-800 outline-none data-highlighted:bg-surface-300"
+                        class="flex h-8 cursor-default items-center gap-2 rounded-lg px-2 text-surface-800 outline-none data-highlighted:bg-surface-300"
                         onSelect={startCreate}
                     >
                         <FilePlusIcon
@@ -343,9 +343,9 @@ export function FileTree(props: FileTreeProps) {
                     </ContextMenu.Item>
 
                     <Show when={contextEntry() && !contextEntry()?.isDir}>
-                        <ContextMenu.Separator class="my-1 h-px bg-surface-300" />
+                        <ContextMenu.Separator class="my-1 h-px border-0 bg-surface-300" />
                         <ContextMenu.Item
-                            class="flex h-8 cursor-default items-center gap-2 rounded-sm px-2 text-surface-800 outline-none data-highlighted:bg-surface-300"
+                            class="flex h-8 cursor-default items-center gap-2 rounded-lg px-2 text-surface-800 outline-none data-highlighted:bg-surface-300"
                             onSelect={startRename}
                         >
                             <PencilIcon
@@ -357,7 +357,7 @@ export function FileTree(props: FileTreeProps) {
                             </ContextMenu.ItemLabel>
                         </ContextMenu.Item>
                         <ContextMenu.Item
-                            class="flex h-8 cursor-default items-center gap-2 rounded-sm px-2 text-danger-text outline-none data-highlighted:bg-danger-surface/60"
+                            class="flex h-8 cursor-default items-center gap-2 rounded-lg px-2 text-danger-text outline-none data-highlighted:bg-danger-surface/60"
                             onSelect={() => void trashEntry()}
                         >
                             <TrashIcon
