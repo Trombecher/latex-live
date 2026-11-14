@@ -64,3 +64,19 @@ body {
     background-color: var(--color-surface-100);
     color: var(--color-surface-800);
 }
+
+/*
+ * PDF.js viewer overrides. `pdf_viewer.css` is unlayered, so these rules must
+ * also stay unlayered to win over it (Tailwind utilities cannot override it).
+ */
+.latex-pdf-viewer {
+    --loading-icon-delay: 200ms;
+}
+
+.latex-pdf-viewer .page {
+    border-radius: 2px;
+    background-color: var(--color-always-white);
+    box-shadow:
+        0 10px 15px -3px rgb(0 0 0 / 0.4),
+        0 4px 6px -4px rgb(0 0 0 / 0.4);
+}

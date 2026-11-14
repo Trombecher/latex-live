@@ -7,9 +7,10 @@ import {ErrorPanel} from "./components/ErrorPanel";
 import {FilePlaceholder} from "./components/FilePlaceholder";
 import {Logo} from "./components/Logo";
 import {PaneSeparator} from "./components/PaneSeparator";
-import {PdfPreview, Spinner} from "./components/PdfPreview";
+import {PdfPreview, type PdfViewerHandle} from "./components/PdfPreview";
 import {PreviewToolbar} from "./components/PreviewToolbar";
 import {Sidebar} from "./components/Sidebar";
+import {Spinner} from "./components/Spinner";
 import {compileLatex} from "./lib/compile";
 import {exportPdf} from "./lib/export";
 import {errorMessage, fileName, isTexFile} from "./lib/files";
@@ -23,11 +24,11 @@ import {
     type DirEntry,
     type WorkspaceInfo,
 } from "./lib/workspace";
-import {ZOOM_STEP, clampZoom} from "./lib/zoom";
 
 export default function App() {
     let editor: monaco.editor.IStandaloneCodeEditor | undefined;
     let currentPdfUrl: string | null = null;
+    let previousPdfUrl: string | null = null;
     let pdfBytes: Uint8Array | null = null;
     let savedText = "";
     let readGeneration = 0;
@@ -44,8 +45,12 @@ export default function App() {
     const [pdfUrl, setPdfUrl] = createSignal<string | null>(null);
     const [error, setError] = createSignal<string | null>(null);
     const [pageCount, setPageCount] = createSignal(0);
+    const [pageNumber, setPageNumber] = createSignal(1);
     const [previewRatio, setPreviewRatio] = createSignal(0.5);
     const [zoom, setZoom] = createSignal(1);
+    const [scaleValue, setScaleValue] = createSignal("page-width");
+    const [viewerHandle, setViewerHandle] =
+        createSignal<PdfViewerHandle | null>(null);
 
     const isTexSelected = () => {
         const entry = selection();
@@ -56,10 +61,23 @@ export default function App() {
         isTexSelected() && !loadingFile() && editorFile() !== null;
 
     const replacePdfUrl = (url: string | null) => {
-        if (currentPdfUrl) {
-            URL.revokeObjectURL(currentPdfUrl);
+        // The viewer may still lazily fetch pages from the previous document,
+        // so keep the immediately previous URL alive until the next compile.
+        if (previousPdfUrl) {
+            URL.revokeObjectURL(previousPdfUrl);
+            previousPdfUrl = null;
         }
-        currentPdfUrl = url;
+
+        if (!url) {
+            if (currentPdfUrl) {
+                URL.revokeObjectURL(currentPdfUrl);
+                currentPdfUrl = null;
+            }
+        } else {
+            previousPdfUrl = currentPdfUrl;
+            currentPdfUrl = url;
+        }
+
         setPdfUrl(url);
     };
 
@@ -68,6 +86,9 @@ export default function App() {
         replacePdfUrl(null);
         setError(null);
         setPageCount(0);
+        setPageNumber(1);
+        setZoom(1);
+        setScaleValue("page-width");
     };
 
     const clearCurrentFile = () => {
@@ -285,13 +306,10 @@ export default function App() {
         }
     };
 
-    const zoomIn = () => setZoom(value => clampZoom(value + ZOOM_STEP));
-
-    const zoomOut = () => setZoom(value => clampZoom(value - ZOOM_STEP));
-
-    const resetZoom = () => setZoom(1);
-
-    const setZoomAt = (value: number) => setZoom(clampZoom(value));
+    const handleScaleChange = (scale: number, value: string) => {
+        setZoom(scale);
+        setScaleValue(value);
+    };
 
     const exportCurrentPdf = async () => {
         const workspaceInfo = workspace();
@@ -383,8 +401,14 @@ export default function App() {
     });
 
     onCleanup(() => {
+        if (previousPdfUrl) {
+            URL.revokeObjectURL(previousPdfUrl);
+            previousPdfUrl = null;
+        }
+
         if (currentPdfUrl) {
             URL.revokeObjectURL(currentPdfUrl);
+            currentPdfUrl = null;
         }
     });
 
@@ -454,18 +478,25 @@ export default function App() {
                     <PreviewToolbar
                         canCompile={canCompile()}
                         compiling={compiling()}
+                        pageNumber={pageNumber()}
                         pageCount={pageCount()}
                         zoom={zoom()}
-                        onZoomIn={zoomIn}
-                        onZoomOut={zoomOut}
-                        onZoomReset={resetZoom}
+                        scaleValue={scaleValue()}
+                        onZoomIn={() => viewerHandle()?.zoomIn()}
+                        onZoomOut={() => viewerHandle()?.zoomOut()}
+                        onScaleChange={value =>
+                            viewerHandle()?.setScaleValue(value)
+                        }
+                        onPreviousPage={() => viewerHandle()?.previousPage()}
+                        onNextPage={() => viewerHandle()?.nextPage()}
                         onCompile={() => void compile()}
                         onExport={() => void exportCurrentPdf()}
                     />
                     <PdfPreview
                         url={pdfUrl()}
-                        zoom={zoom()}
-                        onZoomChange={setZoomAt}
+                        onReady={handle => setViewerHandle(handle)}
+                        onScaleChange={handleScaleChange}
+                        onPageChange={setPageNumber}
                         onPageCount={count => setPageCount(count)}
                     />
                     <ErrorPanel error={error()} />

@@ -1,215 +1,210 @@
-import * as pdfjs from "pdfjs-dist";
-import type {PDFDocumentProxy, RenderTask} from "pdfjs-dist";
-import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import {openUrl} from "@tauri-apps/plugin-opener";
+import {Show, createEffect, createSignal, onCleanup, onMount} from "solid-js";
+
 import {
-    For,
-    Show,
-    createEffect,
-    createSignal,
-    onCleanup,
-    onMount,
-} from "solid-js";
-
+    EventBus,
+    PDFLinkService,
+    PDFViewer,
+    pdfjs,
+    type PDFDocumentProxy,
+} from "../lib/pdfjs";
 import {clampZoom} from "../lib/zoom";
+import {Spinner} from "./Spinner";
 
-pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-
-const PAGE_GAP = 16;
-const HORIZONTAL_PADDING = 32;
 const WHEEL_ZOOM_SENSITIVITY = 0.0025;
+const ZOOM_DRAWING_DELAY = 400;
+const FIT_SCALE_VALUES = new Set([
+    "auto",
+    "page-width",
+    "page-fit",
+    "page-height",
+]);
+
+type PDFViewerOptionsWithAbort = ConstructorParameters<typeof PDFViewer>[0] & {
+    abortSignal?: AbortSignal;
+};
+
+const EXTERNAL_LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:", "tel:"]);
+
+export interface PdfViewerHandle {
+    zoomIn: () => void;
+    zoomOut: () => void;
+    setScaleValue: (value: string) => void;
+    previousPage: () => void;
+    nextPage: () => void;
+}
 
 interface PdfPreviewProps {
     url: string | null;
-    zoom: number;
-    onZoomChange: (zoom: number) => void;
+    onReady: (handle: PdfViewerHandle | null) => void;
+    onScaleChange: (scale: number, value: string) => void;
+    onPageChange: (page: number) => void;
     onPageCount: (count: number) => void;
 }
 
-function PdfPage(props: {
-    doc: PDFDocumentProxy;
-    pageNumber: number;
-    width: number;
-}) {
-    let canvas: HTMLCanvasElement | undefined;
-    let renderTask: RenderTask | undefined;
-    let generation = 0;
-
-    const [aspectRatio, setAspectRatio] = createSignal(0);
-
-    // Keep the CSS size of the canvas in sync with the requested width
-    // synchronously, so the scroll container can be adjusted while zooming
-    // before the page has finished re-rendering.
-    createEffect(() => {
-        const width = props.width;
-        const aspect = aspectRatio();
-
-        if (!canvas || width <= 0) {
-            return;
-        }
-
-        canvas.style.width = `${Math.floor(width)}px`;
-        if (aspect > 0) {
-            canvas.style.height = `${Math.floor(width * aspect)}px`;
-        }
-    });
-
-    createEffect(() => {
-        const doc = props.doc;
-        const pageNumber = props.pageNumber;
-        const width = props.width;
-
-        if (!canvas || width <= 0) {
-            return;
-        }
-
-        const current = ++generation;
-        renderTask?.cancel();
-
-        void (async () => {
-            try {
-                const page = await doc.getPage(pageNumber);
-                if (current !== generation || !canvas) {
-                    return;
-                }
-
-                const baseViewport = page.getViewport({scale: 1});
-                const pixelRatio = window.devicePixelRatio || 1;
-                const cssScale = width / baseViewport.width;
-                const viewport = page.getViewport({
-                    scale: cssScale * pixelRatio,
-                });
-
-                canvas.width = Math.floor(viewport.width);
-                canvas.height = Math.floor(viewport.height);
-                setAspectRatio(baseViewport.height / baseViewport.width);
-
-                const task = page.render({canvas, viewport});
-                renderTask = task;
-
-                await task.promise;
-            } catch (error) {
-                if (current !== generation) {
-                    return;
-                }
-
-                if (
-                    (error as {name?: string}).name
-                    !== "RenderingCancelledException"
-                ) {
-                    console.error("Failed to render PDF page", error);
-                }
-            }
-        })();
-    });
-
-    onCleanup(() => {
-        generation += 1;
-        renderTask?.cancel();
-    });
-
-    return (
-        <canvas
-            ref={element => {
-                canvas = element;
-            }}
-            class="block rounded-sm bg-always-white shadow-lg shadow-always-black/40"
-        />
-    );
-}
-
 export function PdfPreview(props: PdfPreviewProps) {
-    let paneElement: HTMLDivElement | undefined;
-    let scrollContainer: HTMLDivElement | undefined;
+    let container: HTMLDivElement | undefined;
+    let viewerElement: HTMLDivElement | undefined;
 
-    const [doc, setDoc] = createSignal<PDFDocumentProxy | null>(null);
-    const [pageCount, setPageCount] = createSignal(0);
-    const [basePageWidth, setBasePageWidth] = createSignal(0);
+    const [hasDocument, setHasDocument] = createSignal(false);
     const [loadingDocument, setLoadingDocument] = createSignal(false);
     const [loadError, setLoadError] = createSignal<string | null>(null);
+    const [ready, setReady] = createSignal(false);
 
+    let viewer: PDFViewer | null = null;
+    let eventBus: EventBus | null = null;
+    let linkService: PDFLinkService | null = null;
+    let viewerAbort: AbortController | null = null;
+    let eventAbort: AbortController | null = null;
     let displayedDoc: PDFDocumentProxy | null = null;
 
-    const pageWidth = () => basePageWidth() * props.zoom;
-
-    const clearDocument = () => {
-        const previous = displayedDoc;
-        displayedDoc = null;
-
-        if (previous) {
-            void previous.loadingTask.destroy();
+    // `PDFViewer` computes zoom anchors as `origin - containerTopLeft`, where
+    // `containerTopLeft` is offset relative to the container's offset parent.
+    // Our container lives inside a relatively positioned pane, so translate
+    // client coordinates into the same coordinate space.
+    function pointerOrigin(clientX: number, clientY: number): number[] {
+        if (!viewer || !container) {
+            return [clientX, clientY];
         }
 
-        setDoc(null);
-        setPageCount(0);
-        props.onPageCount(0);
+        const rect = container.getBoundingClientRect();
+        const [top, left] = viewer.containerTopLeft;
+        return [clientX - rect.left + left, clientY - rect.top + top];
+    }
+
+    function zoomBy(factor: number, clientX?: number, clientY?: number) {
+        if (!viewer || !container || !viewer.pdfDocument) {
+            return;
+        }
+
+        const current = viewer.currentScale;
+        const target = clampZoom(current * factor);
+
+        // Never move in the opposite direction when the current scale already
+        // sits outside the app's zoom bounds (e.g. a very small page-width).
+        if (factor < 1 && target >= current) {
+            return;
+        }
+        if (factor > 1 && target <= current) {
+            return;
+        }
+
+        if (Math.abs(target - current) < 1e-4) {
+            return;
+        }
+
+        const rect = container.getBoundingClientRect();
+        const origin = pointerOrigin(
+            clientX ?? rect.left + rect.width / 2,
+            clientY ?? rect.top + rect.height / 2,
+        );
+
+        viewer.updateScale({
+            scaleFactor: target / current,
+            origin,
+            drawingDelay: ZOOM_DRAWING_DELAY,
+        });
+    }
+
+    const handle: PdfViewerHandle = {
+        zoomIn: () => zoomBy(1.1),
+        zoomOut: () => zoomBy(1 / 1.1),
+        setScaleValue: value => {
+            if (viewer?.pdfDocument) {
+                viewer.currentScaleValue = value;
+            }
+        },
+        previousPage: () => {
+            viewer?.previousPage();
+        },
+        nextPage: () => {
+            viewer?.nextPage();
+        },
     };
 
     onMount(() => {
-        const container = scrollContainer;
-        const pane = paneElement;
-        if (!container || !pane) {
+        if (!container || !viewerElement) {
             return;
         }
 
-        // The page size is independent of the pane width, so resizing the
-        // pane only reveals or clips the PDF. Keep the viewport centered on
-        // the same part of the document while the pane changes size.
-        let previousWidth = container.clientWidth;
+        viewerElement.classList.add("pdfViewer");
 
-        const observer = new ResizeObserver(() => {
-            const width = container.clientWidth;
-            if (width === previousWidth) {
+        eventBus = new EventBus();
+        linkService = new PDFLinkService({eventBus});
+        viewerAbort = new AbortController();
+
+        viewer = new PDFViewer({
+            container,
+            viewer: viewerElement,
+            eventBus,
+            linkService,
+            annotationEditorMode: pdfjs.AnnotationEditorType.DISABLE,
+            removePageBorders: true,
+            abortSignal: viewerAbort.signal,
+        } as PDFViewerOptionsWithAbort);
+
+        linkService.setViewer(viewer);
+
+        eventAbort = new AbortController();
+        eventBus.on(
+            "scalechanging",
+            (event: {scale: number}) => {
+                props.onScaleChange(
+                    event.scale,
+                    // `currentScaleValue` is a number after `updateScale`, even
+                    // though the typings only declare strings.
+                    String(viewer?.currentScaleValue ?? event.scale),
+                );
+            },
+            {signal: eventAbort.signal},
+        );
+        eventBus.on(
+            "pagechanging",
+            (event: {pageNumber: number}) => {
+                props.onPageChange(event.pageNumber);
+            },
+            {signal: eventAbort.signal},
+        );
+
+        // Keep named fit modes in sync with pane resizes.
+        let lastWidth = container.clientWidth;
+        let lastHeight = container.clientHeight;
+        let resizeFrame = 0;
+        const resizeObserver = new ResizeObserver(() => {
+            const width = container?.clientWidth ?? 0;
+            const height = container?.clientHeight ?? 0;
+
+            if (width === lastWidth && height === lastHeight) {
                 return;
             }
 
-            const center = container.scrollLeft + previousWidth / 2;
-            previousWidth = width;
-            container.scrollLeft = center - width / 2;
+            lastWidth = width;
+            lastHeight = height;
 
-            // Recover if the pane had no usable width when the document was
-            // loaded.
-            if (basePageWidth() <= 0) {
-                setBasePageWidth(Math.max(0, width - HORIZONTAL_PADDING));
+            if (resizeFrame !== 0) {
+                cancelAnimationFrame(resizeFrame);
             }
+
+            resizeFrame = requestAnimationFrame(() => {
+                resizeFrame = 0;
+
+                if (!viewer) {
+                    return;
+                }
+
+                const value = String(viewer.currentScaleValue);
+                if (FIT_SCALE_VALUES.has(value)) {
+                    viewer.currentScaleValue = value;
+                }
+            });
         });
 
-        observer.observe(pane);
+        resizeObserver.observe(container);
 
         let zoomFrame = 0;
         let accumulatedFactor = 1;
         let anchorX = 0;
         let anchorY = 0;
-
-        const applyZoom = (
-            factor: number,
-            clientX: number,
-            clientY: number,
-        ) => {
-            const current = props.zoom;
-            const next = clampZoom(current * factor);
-
-            if (Math.abs(next - current) < 1e-4) {
-                return;
-            }
-
-            const rect = container.getBoundingClientRect();
-            const pointerX = clientX - rect.left;
-            const pointerY = clientY - rect.top;
-            const ratioX =
-                (container.scrollLeft + pointerX)
-                / Math.max(1, container.scrollWidth);
-            const ratioY =
-                (container.scrollTop + pointerY)
-                / Math.max(1, container.scrollHeight);
-
-            props.onZoomChange(next);
-
-            // Keep the point under the cursor anchored while the pages
-            // resize. Page sizes update synchronously, so this takes effect
-            // before the next paint.
-            container.scrollLeft = ratioX * container.scrollWidth - pointerX;
-            container.scrollTop = ratioY * container.scrollHeight - pointerY;
-        };
 
         const scheduleZoom = (
             factor: number,
@@ -232,7 +227,7 @@ export function PdfPreview(props: PdfPreviewProps) {
                 zoomFrame = 0;
                 const pendingFactor = accumulatedFactor;
                 accumulatedFactor = 1;
-                applyZoom(pendingFactor, anchorX, anchorY);
+                zoomBy(pendingFactor, anchorX, anchorY);
             });
         };
 
@@ -241,7 +236,7 @@ export function PdfPreview(props: PdfPreviewProps) {
                 return event.deltaY * 16;
             }
             if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
-                return event.deltaY * container.clientHeight;
+                return event.deltaY * (container?.clientHeight ?? 1);
             }
             return event.deltaY;
         };
@@ -281,13 +276,13 @@ export function PdfPreview(props: PdfPreviewProps) {
 
             const gesture = event as GestureEvent;
             const scale = gesture.scale ?? gestureScale;
-            const rect = container.getBoundingClientRect();
+            const rect = container?.getBoundingClientRect();
 
             if (gestureScale > 0) {
                 scheduleZoom(
                     scale / gestureScale,
-                    gesture.clientX ?? rect.left + rect.width / 2,
-                    gesture.clientY ?? rect.top + rect.height / 2,
+                    gesture.clientX ?? (rect ? rect.left + rect.width / 2 : 0),
+                    gesture.clientY ?? (rect ? rect.top + rect.height / 2 : 0),
                 );
             }
 
@@ -349,6 +344,47 @@ export function PdfPreview(props: PdfPreviewProps) {
             }
         };
 
+        // External links (hyperref, mailto, ...) must open outside the Tauri
+        // webview instead of navigating the app away.
+        const handleLinkClick = (event: MouseEvent) => {
+            const target = event.target;
+            if (!(target instanceof Element)) {
+                return;
+            }
+
+            const anchor = target.closest("a[href]");
+            if (!(anchor instanceof HTMLAnchorElement)) {
+                return;
+            }
+
+            const href = anchor.getAttribute("href");
+            if (!href || href.startsWith("#")) {
+                return;
+            }
+
+            let url: URL;
+            try {
+                url = new URL(href, window.location.href);
+            } catch {
+                event.preventDefault();
+                return;
+            }
+
+            // Never let a PDF link navigate the app webview away. Named
+            // actions, destinations and attachments are handled by PDF.js
+            // itself and never reach this point.
+            event.preventDefault();
+
+            if (!EXTERNAL_LINK_PROTOCOLS.has(url.protocol)) {
+                console.warn(`Blocked unsupported PDF link: ${href}`);
+                return;
+            }
+
+            void openUrl(url.href).catch(error => {
+                console.error("Failed to open external link", error);
+            });
+        };
+
         container.addEventListener("wheel", handleWheel, {passive: false});
         container.addEventListener("gesturestart", handleGestureStart, {
             passive: false,
@@ -367,39 +403,66 @@ export function PdfPreview(props: PdfPreviewProps) {
         });
         container.addEventListener("touchend", handleTouchEnd);
         container.addEventListener("touchcancel", handleTouchEnd);
+        container.addEventListener("click", handleLinkClick);
+
+        props.onReady(handle);
+        setReady(true);
 
         onCleanup(() => {
-            observer.disconnect();
+            resizeObserver.disconnect();
+            cancelAnimationFrame(resizeFrame);
             cancelAnimationFrame(zoomFrame);
-            container.removeEventListener("wheel", handleWheel);
-            container.removeEventListener("gesturestart", handleGestureStart);
-            container.removeEventListener("gesturechange", handleGestureChange);
-            container.removeEventListener("gestureend", handleGestureEnd);
-            container.removeEventListener("touchstart", handleTouchStart);
-            container.removeEventListener("touchmove", handleTouchMove);
-            container.removeEventListener("touchend", handleTouchEnd);
-            container.removeEventListener("touchcancel", handleTouchEnd);
+            container?.removeEventListener("wheel", handleWheel);
+            container?.removeEventListener("gesturestart", handleGestureStart);
+            container?.removeEventListener(
+                "gesturechange",
+                handleGestureChange,
+            );
+            container?.removeEventListener("gestureend", handleGestureEnd);
+            container?.removeEventListener("touchstart", handleTouchStart);
+            container?.removeEventListener("touchmove", handleTouchMove);
+            container?.removeEventListener("touchend", handleTouchEnd);
+            container?.removeEventListener("touchcancel", handleTouchEnd);
+            container?.removeEventListener("click", handleLinkClick);
         });
     });
 
+    const clearDocument = () => {
+        const previous = displayedDoc;
+        displayedDoc = null;
+
+        viewer?.setDocument(null);
+        linkService?.setDocument(null);
+
+        if (previous) {
+            void previous.loadingTask.destroy();
+        }
+
+        setHasDocument(false);
+        setLoadingDocument(false);
+        props.onPageCount(0);
+        props.onPageChange(1);
+    };
+
     createEffect(() => {
         const url = props.url;
+        if (!ready()) {
+            return;
+        }
+
         let cancelled = false;
         let resolved = false;
+        let loadAbort: AbortController | null = null;
 
         setLoadError(null);
 
         if (!url) {
-            setLoadingDocument(false);
-            setBasePageWidth(0);
             clearDocument();
             return;
         }
 
         setLoadingDocument(true);
 
-        // Keep the previous document visible while the new one loads, so the
-        // zoom level and scroll position carry over to the recompiled PDF.
         const previousDoc = displayedDoc;
         const loadingTask = pdfjs.getDocument({url});
 
@@ -413,42 +476,96 @@ export function PdfPreview(props: PdfPreviewProps) {
                 resolved = true;
                 displayedDoc = document;
 
-                if (basePageWidth() <= 0) {
-                    const containerWidth = scrollContainer?.clientWidth ?? 0;
-                    setBasePageWidth(
-                        Math.max(0, containerWidth - HORIZONTAL_PADDING),
-                    );
-                }
+                const savedScaleValue = viewer?.currentScaleValue
+                    ? String(viewer.currentScaleValue)
+                    : null;
+                const savedPage = viewer?.currentPageNumber ?? 1;
+                const savedScrollTop = container?.scrollTop ?? 0;
+                const savedScrollLeft = container?.scrollLeft ?? 0;
+                const hadDocument = previousDoc !== null;
 
-                setDoc(document);
-                setPageCount(document.numPages);
+                loadAbort = new AbortController();
+                eventBus?.on(
+                    "pagesinit",
+                    () => {
+                        if (cancelled || document !== viewer?.pdfDocument) {
+                            return;
+                        }
+
+                        if (viewer) {
+                            viewer.currentScaleValue =
+                                hadDocument && savedScaleValue
+                                    ? savedScaleValue
+                                    : "page-width";
+
+                            if (hadDocument && viewer.pagesCount > 0) {
+                                viewer.currentPageNumber = Math.min(
+                                    savedPage,
+                                    viewer.pagesCount,
+                                );
+                            }
+                        }
+
+                        if (hadDocument) {
+                            requestAnimationFrame(() => {
+                                requestAnimationFrame(() => {
+                                    if (cancelled || !container) {
+                                        return;
+                                    }
+
+                                    container.scrollLeft = savedScrollLeft;
+                                    container.scrollTop = savedScrollTop;
+                                });
+                            });
+                        }
+
+                        setLoadingDocument(false);
+                    },
+                    {once: true, signal: loadAbort.signal},
+                );
+
+                viewer?.setDocument(document);
+                linkService?.setDocument(document);
+
+                setHasDocument(true);
                 props.onPageCount(document.numPages);
+                props.onPageChange(1);
 
                 if (previousDoc && previousDoc !== document) {
                     void previousDoc.loadingTask.destroy();
                 }
-            })
-            .catch(error => {
-                if (!cancelled) {
+
+                void viewer?.pagesPromise?.catch((error: unknown) => {
+                    if (cancelled) {
+                        return;
+                    }
+
                     setLoadError(
                         error instanceof Error ? error.message : String(error),
                     );
-
-                    if (!previousDoc) {
-                        setDoc(null);
-                        setPageCount(0);
-                        props.onPageCount(0);
-                    }
-                }
-            })
-            .finally(() => {
-                if (!cancelled) {
                     setLoadingDocument(false);
+                });
+            })
+            .catch(error => {
+                if (cancelled) {
+                    return;
+                }
+
+                setLoadError(
+                    error instanceof Error ? error.message : String(error),
+                );
+                setLoadingDocument(false);
+
+                if (!previousDoc) {
+                    setHasDocument(false);
+                    props.onPageCount(0);
+                    props.onPageChange(1);
                 }
             });
 
         onCleanup(() => {
             cancelled = true;
+            loadAbort?.abort();
 
             // Only cancel the load if it has not become the displayed
             // document yet; the next compile destroys the old document once
@@ -460,51 +577,46 @@ export function PdfPreview(props: PdfPreviewProps) {
     });
 
     onCleanup(() => {
-        if (displayedDoc) {
-            void displayedDoc.loadingTask.destroy();
-            displayedDoc = null;
+        viewer?.setDocument(null);
+        eventAbort?.abort();
+        viewerAbort?.abort();
+
+        const previous = displayedDoc;
+        displayedDoc = null;
+
+        if (previous) {
+            void previous.loadingTask.destroy();
         }
+
+        props.onReady(null);
     });
 
     return (
-        <div
-            ref={element => {
-                paneElement = element;
-            }}
-            class="relative flex min-h-0 flex-1 flex-col"
-        >
+        <div class="relative flex min-h-0 flex-1 flex-col">
             <div
                 ref={element => {
-                    scrollContainer = element;
+                    container = element;
                 }}
-                class="min-h-0 flex-1 overflow-auto bg-surface-200 p-4"
+                class="absolute inset-0 overflow-auto bg-surface-200 p-4"
                 style={{
                     "touch-action": "pan-x pan-y",
                     "scrollbar-gutter": "stable",
                 }}
+                tabindex="0"
             >
-                <Show when={pageCount() > 0 && doc()} fallback={<EmptyState />}>
-                    <div
-                        class="mx-auto flex w-max min-w-full flex-col items-center"
-                        style={{gap: `${PAGE_GAP}px`}}
-                    >
-                        <For
-                            each={Array.from(
-                                {length: pageCount()},
-                                (_, index) => index + 1,
-                            )}
-                        >
-                            {pageNumber => (
-                                <PdfPage
-                                    doc={doc()!}
-                                    pageNumber={pageNumber}
-                                    width={pageWidth()}
-                                />
-                            )}
-                        </For>
-                    </div>
-                </Show>
+                <div
+                    ref={element => {
+                        viewerElement = element;
+                    }}
+                    class="latex-pdf-viewer"
+                />
             </div>
+
+            <Show when={!hasDocument()}>
+                <div class="absolute inset-0 grid place-items-center bg-surface-200">
+                    <EmptyState />
+                </div>
+            </Show>
 
             <Show when={loadingDocument()}>
                 <div class="absolute inset-0 grid place-items-center bg-surface-100/60 backdrop-blur-[1px]">
@@ -539,11 +651,5 @@ function EmptyState() {
                 </p>
             </div>
         </div>
-    );
-}
-
-export function Spinner() {
-    return (
-        <span class="inline-block size-4 animate-spin rounded-full border-2 border-surface-500 border-t-surface-900" />
     );
 }
