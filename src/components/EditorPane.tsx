@@ -6,7 +6,10 @@ import {
     setupMonaco,
     watchColorScheme,
 } from "../editor/monaco-setup";
+import type {CompileDiagnostic} from "../lib/compile";
 import {isTexFile} from "../lib/files";
+
+const MARKER_OWNER = "latex-compile";
 
 export interface EditorFile {
     path: string;
@@ -15,6 +18,7 @@ export interface EditorFile {
 
 interface EditorPaneProps {
     file: EditorFile | null;
+    diagnostics: CompileDiagnostic[];
     onChange: (value: string) => void;
     onSave: () => void;
     onBlur: () => void;
@@ -80,6 +84,40 @@ export function EditorPane(props: EditorPaneProps) {
             props.onChange(editor.getValue());
         });
 
+        const applyDiagnostics = () => {
+            const target = model;
+            if (!target) {
+                return;
+            }
+
+            const filePath = props.file?.path ?? "";
+            const lineCount = target.getLineCount();
+            const markers = props.diagnostics
+                .filter(diagnostic => diagnostic.file === filePath)
+                .map(diagnostic => {
+                    const lineNumber = Math.min(
+                        Math.max(1, diagnostic.line),
+                        lineCount,
+                    );
+
+                    return {
+                        severity:
+                            diagnostic.severity === "warning"
+                                ? monaco.MarkerSeverity.Warning
+                                : monaco.MarkerSeverity.Error,
+                        message: diagnostic.message,
+                        startLineNumber: lineNumber,
+                        startColumn: 1,
+                        endLineNumber: lineNumber,
+                        endColumn: target.getLineMaxColumn(lineNumber),
+                        source: "LaTeX",
+                    };
+                })
+                .sort((a, b) => a.startLineNumber - b.startLineNumber);
+
+            monaco.editor.setModelMarkers(target, MARKER_OWNER, markers);
+        };
+
         const blurSubscription = editor.onDidBlurEditorWidget(() => {
             props.onBlur();
         });
@@ -100,6 +138,10 @@ export function EditorPane(props: EditorPaneProps) {
 
         createEffect(() => {
             applyFile(props.file);
+        });
+
+        createEffect(() => {
+            applyDiagnostics();
         });
 
         onCleanup(() => {

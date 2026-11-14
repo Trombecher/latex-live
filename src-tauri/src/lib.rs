@@ -7,6 +7,7 @@ mod format;
 mod git;
 mod workspace;
 
+use compile::CompileFailure;
 use workspace::WorkspaceState;
 
 /// Compile the currently selected LaTeX file and return the PDF as raw bytes.
@@ -19,28 +20,30 @@ async fn compile_latex(
     source: String,
     path: String,
     state: tauri::State<'_, WorkspaceState>,
-) -> Result<tauri::ipc::Response, String> {
-    let root = state.root()?;
-    let file = workspace::resolve_existing(&root, &path)?;
+) -> Result<tauri::ipc::Response, CompileFailure> {
+    let root = state.root().map_err(CompileFailure::new)?;
+    let file = workspace::resolve_existing(&root, &path).map_err(CompileFailure::new)?;
 
     if !file.is_file() {
-        return Err("The selected path is not a file.".to_owned());
+        return Err(CompileFailure::new("The selected path is not a file."));
     }
 
     if !workspace::is_latex_file(&file) {
-        return Err("Only .tex files can be compiled.".to_owned());
+        return Err(CompileFailure::new("Only .tex files can be compiled."));
     }
 
     let file_name = file
         .file_name()
         .and_then(|name| name.to_str())
-        .ok_or_else(|| "The selected file name is not valid UTF-8.".to_owned())?
+        .ok_or_else(|| CompileFailure::new("The selected file name is not valid UTF-8."))?
         .to_owned();
 
-    tauri::async_runtime::spawn_blocking(move || compile::compile(&source, &root, &file_name))
-        .await
-        .map_err(|error| format!("LaTeX compilation task failed: {error}"))?
-        .map(tauri::ipc::Response::new)
+    tauri::async_runtime::spawn_blocking(move || {
+        compile::compile(&source, &root, &file_name, &path)
+    })
+    .await
+    .map_err(|error| CompileFailure::new(format!("LaTeX compilation task failed: {error}")))?
+    .map(tauri::ipc::Response::new)
 }
 
 /// Run the Tauri application.

@@ -11,7 +11,11 @@ import {PdfPreview, type PdfViewerHandle} from "./components/PdfPreview";
 import {PreviewToolbar} from "./components/PreviewToolbar";
 import {Sidebar} from "./components/Sidebar";
 import {Spinner} from "./components/Spinner";
-import {compileLatex} from "./lib/compile";
+import {
+    compileLatex,
+    LatexCompileError,
+    type CompileDiagnostic,
+} from "./lib/compile";
 import {exportPdf} from "./lib/export";
 import {errorMessage, fileName, isTexFile, isTextFile} from "./lib/files";
 import {
@@ -44,6 +48,7 @@ export default function App() {
     const [compiling, setCompiling] = createSignal(false);
     const [pdfUrl, setPdfUrl] = createSignal<string | null>(null);
     const [error, setError] = createSignal<string | null>(null);
+    const [diagnostics, setDiagnostics] = createSignal<CompileDiagnostic[]>([]);
     const [pageCount, setPageCount] = createSignal(0);
     const [pageNumber, setPageNumber] = createSignal(1);
     const [previewRatio, setPreviewRatio] = createSignal(0.5);
@@ -90,6 +95,7 @@ export default function App() {
         pdfBytes = null;
         replacePdfUrl(null);
         setError(null);
+        setDiagnostics([]);
         setPageCount(0);
         setPageNumber(1);
         setZoom(1);
@@ -315,6 +321,7 @@ export default function App() {
 
         setCompiling(true);
         setError(null);
+        setDiagnostics([]);
 
         try {
             const bytes = await compileLatex(editor.getValue(), entry.path);
@@ -324,6 +331,9 @@ export default function App() {
             replacePdfUrl(URL.createObjectURL(blob));
         } catch (cause) {
             setError(errorMessage(cause));
+            setDiagnostics(
+                cause instanceof LatexCompileError ? cause.diagnostics : [],
+            );
         } finally {
             setCompiling(false);
         }
@@ -436,7 +446,7 @@ export default function App() {
     });
 
     return (
-        <div class="flex h-screen flex-col overflow-hidden bg-surface-100 text-surface-800">
+        <div class="bg-surface-100 text-surface-800 flex h-screen flex-col overflow-hidden">
             <main class="flex min-h-0 flex-1">
                 <Sidebar
                     workspace={workspace()}
@@ -453,7 +463,7 @@ export default function App() {
                     onBeforeGitAction={prepareGitAction}
                 />
 
-                <section class="relative flex min-w-0 flex-1 flex-col bg-surface-100">
+                <section class="bg-surface-100 relative flex min-w-0 flex-1 flex-col">
                     <Show
                         when={isEditableSelected()}
                         fallback={
@@ -471,6 +481,7 @@ export default function App() {
                     >
                         <EditorPane
                             file={editorFile()}
+                            diagnostics={diagnostics()}
                             onChange={handleEditorChange}
                             onSave={() => void save()}
                             onBlur={saveIfDirty}
@@ -482,8 +493,8 @@ export default function App() {
                     </Show>
 
                     <Show when={loadingFile()}>
-                        <div class="absolute inset-0 grid place-items-center bg-surface-100/70 backdrop-blur-[1px]">
-                            <div class="flex items-center gap-3 rounded-md bg-surface-100/90 px-4 py-3 text-sm text-surface-800 shadow-xl">
+                        <div class="bg-surface-100/70 absolute inset-0 grid place-items-center backdrop-blur-[1px]">
+                            <div class="bg-surface-100/90 text-surface-800 flex items-center gap-3 rounded-md px-4 py-3 text-sm shadow-xl">
                                 <Spinner />
                                 Opening file…
                             </div>
@@ -497,7 +508,7 @@ export default function App() {
                 />
 
                 <section
-                    class="flex min-w-0 flex-col bg-surface-200"
+                    class="bg-surface-200 flex min-w-0 flex-col"
                     style={{width: `${previewRatio() * 100}%`}}
                 >
                     <PreviewToolbar
@@ -536,10 +547,10 @@ function EditorEmptyState(props: {hasWorkspace: boolean}) {
         <div class="grid h-full place-items-center px-6 text-center">
             <div class="max-w-sm">
                 <Logo class="mx-auto mb-4 block size-12 rounded-lg" />
-                <p class="text-sm font-medium text-surface-700">
+                <p class="text-surface-700 text-sm font-medium">
                     {props.hasWorkspace ? "No file selected" : "No folder open"}
                 </p>
-                <p class="mt-1 text-xs leading-relaxed text-surface-500">
+                <p class="text-surface-500 mt-1 text-xs leading-relaxed">
                     {props.hasWorkspace
                         ? "Choose a text file from the sidebar to start editing."
                         : "Open a folder to browse your LaTeX project."}
