@@ -20,6 +20,25 @@ To format and fix oxlint issues, run `nub run format`. To check your changes for
 compilation errors, run `nub run check` (and not `nub run build`). It checks
 TypeScript errors and linting errors.
 
+### Color Management
+
+We use TailwindCSS V4. The app has light mode and dark mode, applied depending
+on `prefers-color-scheme`. Color families `--color-white`, `--color-black`,
+`--color-surface-*` **adjust automatically depending on light/dark mode**.
+**Design the UI "in light mode" when using these automatic colors**. Never use
+`neutral-*` for surfaces or text on surfaces, use `surface-*`. Think in roles,
+not shades: low numbers are backgrounds (`surface-50` input wells, `surface-100`
+app/sidebar, `surface-200` panels, `surface-300` borders/hover), high numbers
+are text (`surface-500` muted, `surface-600` secondary, `surface-700/800` body,
+`surface-900` headings). The numbers mean "contrast level", not "lightness".
+Danger panels use `--color-danger-surface`, `--color-danger-text`,
+`--color-danger-text-strong`. `--color-always-white` / `--color-always-black`
+never flip. Do not use `white`/`black` for fixed colors. They invert. Use
+`always-white` / `always-black` for PDF paper, overlays, shadows, and text on
+blue/red buttons. New semantic colors should be defined in `@theme` with light
+values and overridden in the `prefers-color-scheme: dark` block. Opacity
+modifiers work normally (`bg-surface-100/70`). Monaco colors are separate.
+
 ### Lucide Import Style
 
 Do not import directly from `"lucide-solid"`, instead import from
