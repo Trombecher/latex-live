@@ -2,4 +2,65 @@
 
 @theme {
     --font-sans: "Inter", "Inter Variable", system-ui;
+
+    /*
+     * Semantic surface scale. These are the LIGHT mode values; the dark mode
+     * block below inverts them against the neutral palette. Higher numbers
+     * mean more contrast against the background, so backgrounds use low
+     * values and text uses high values.
+     */
+    --color-surface-50: var(--color-neutral-50);
+    --color-surface-100: var(--color-neutral-100);
+    --color-surface-200: var(--color-neutral-200);
+    --color-surface-300: var(--color-neutral-300);
+    --color-surface-400: var(--color-neutral-400);
+    --color-surface-500: var(--color-neutral-500);
+    --color-surface-600: var(--color-neutral-600);
+    --color-surface-700: var(--color-neutral-700);
+    --color-surface-800: var(--color-neutral-800);
+    --color-surface-900: var(--color-neutral-900);
+    --color-surface-950: var(--color-neutral-950);
+
+    /* Semantic danger colors, also inverted for dark mode. */
+    --color-danger-surface: var(--color-red-50);
+    --color-danger-text: var(--color-red-700);
+    --color-danger-text-strong: var(--color-red-800);
+
+    /* Colors that must never invert (paper, overlays, text on accents). */
+    --color-always-white: #fff;
+    --color-always-black: #000;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-surface-50: var(--color-neutral-950);
+        --color-surface-100: var(--color-neutral-900);
+        --color-surface-200: var(--color-neutral-800);
+        --color-surface-300: var(--color-neutral-700);
+        --color-surface-400: var(--color-neutral-600);
+        --color-surface-500: var(--color-neutral-500);
+        --color-surface-600: var(--color-neutral-400);
+        --color-surface-700: var(--color-neutral-300);
+        --color-surface-800: var(--color-neutral-200);
+        --color-surface-900: var(--color-neutral-100);
+        --color-surface-950: var(--color-neutral-50);
+
+        --color-danger-surface: var(--color-red-950);
+        --color-danger-text: var(--color-red-300);
+        --color-danger-text-strong: var(--color-red-100);
+
+        /* Flip the built-in white/black as well. */
+        --color-white: var(--color-neutral-950);
+        --color-black: var(--color-neutral-50);
+    }
+}
+
+:root {
+    color-scheme: light dark;
+}
+
+html,
+body {
+    background-color: var(--color-surface-100);
+    color: var(--color-surface-800);
 }

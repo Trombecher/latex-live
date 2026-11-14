@@ -1,7 +1,11 @@
 import * as monaco from "monaco-editor/editor";
 import {createEffect, onCleanup, onMount} from "solid-js";
 
-import {setupMonaco} from "../editor/monaco-setup";
+import {
+    monacoThemeName,
+    setupMonaco,
+    watchColorScheme,
+} from "../editor/monaco-setup";
 import {isTexFile} from "../lib/files";
 
 export interface EditorFile {
@@ -32,7 +36,7 @@ export function EditorPane(props: EditorPaneProps) {
 
         const editor = monaco.editor.create(host, {
             model: null,
-            theme: "latex-dark",
+            theme: monacoThemeName(),
             automaticLayout: true,
             fontSize: 18,
             fontLigatures: true,
@@ -88,6 +92,10 @@ export function EditorPane(props: EditorPaneProps) {
             props.onCompile(),
         );
 
+        const unsubscribeColorScheme = watchColorScheme(() => {
+            monaco.editor.setTheme(monacoThemeName());
+        });
+
         props.onReady(editor);
 
         createEffect(() => {
@@ -95,6 +103,7 @@ export function EditorPane(props: EditorPaneProps) {
         });
 
         onCleanup(() => {
+            unsubscribeColorScheme();
             changeSubscription.dispose();
             blurSubscription.dispose();
             editor.setModel(null);

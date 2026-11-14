@@ -69,19 +69,19 @@ export function NameDialog(props: NameDialogProps) {
             }}
         >
             <Dialog.Portal>
-                <Dialog.Overlay class="fixed inset-0 z-40 bg-black/60" />
-                <Dialog.Content class="fixed top-1/2 left-1/2 z-50 w-80 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-neutral-700 bg-neutral-900 p-4 shadow-2xl outline-none">
-                    <Dialog.Title class="text-sm font-semibold text-neutral-100">
+                <Dialog.Overlay class="fixed inset-0 z-40 bg-always-black/60" />
+                <Dialog.Content class="fixed top-1/2 left-1/2 z-50 w-80 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-surface-300 bg-surface-100 p-4 shadow-2xl outline-none">
+                    <Dialog.Title class="text-sm font-semibold text-surface-900">
                         {props.title}
                     </Dialog.Title>
-                    <Dialog.Description class="mt-1 text-xs leading-relaxed text-neutral-500">
+                    <Dialog.Description class="mt-1 text-xs leading-relaxed text-surface-500">
                         {props.description}
                     </Dialog.Description>
 
                     <form class="mt-3" onSubmit={submit}>
                         <label
                             for={inputId}
-                            class="block text-xs font-medium text-neutral-400"
+                            class="block text-xs font-medium text-surface-600"
                         >
                             File name
                         </label>
@@ -96,12 +96,12 @@ export function NameDialog(props: NameDialogProps) {
                             }
                             autocomplete="off"
                             spellcheck={false}
-                            class="mt-1 h-8 w-full rounded-md border border-neutral-700 bg-neutral-950 px-2 text-sm text-neutral-100 outline-none focus:border-blue-500"
+                            class="mt-1 h-8 w-full rounded-md border border-surface-300 bg-surface-50 px-2 text-sm text-surface-900 outline-none focus:border-blue-500"
                         />
 
                         <Show when={props.error}>
                             {error => (
-                                <p class="mt-2 text-xs leading-snug text-red-300">
+                                <p class="mt-2 text-xs leading-snug text-danger-text">
                                     {error()}
                                 </p>
                             )}
@@ -109,7 +109,7 @@ export function NameDialog(props: NameDialogProps) {
 
                         <div class="mt-4 flex justify-end gap-2">
                             <Button
-                                class="inline-flex h-8 items-center rounded-md border border-neutral-700 px-3 text-sm text-neutral-300 transition hover:border-neutral-600 hover:bg-neutral-800"
+                                class="inline-flex h-8 items-center rounded-md border border-surface-300 px-3 text-sm text-surface-700 transition hover:border-surface-400 hover:bg-surface-200"
                                 onClick={props.onClose}
                             >
                                 Cancel
@@ -117,7 +117,7 @@ export function NameDialog(props: NameDialogProps) {
                             <Button
                                 type="submit"
                                 disabled={props.busy || !value().trim()}
-                                class="inline-flex h-8 items-center rounded-md bg-blue-600 px-3 text-sm font-medium text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                class="inline-flex h-8 items-center rounded-md bg-blue-600 px-3 text-sm font-medium text-always-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {props.busy ? "Working…" : props.confirmLabel}
                             </Button>

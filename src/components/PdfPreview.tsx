@@ -112,7 +112,7 @@ function PdfPage(props: {
             ref={element => {
                 canvas = element;
             }}
-            class="block rounded-sm bg-white shadow-lg shadow-black/40"
+            class="block rounded-sm bg-always-white shadow-lg shadow-always-black/40"
         />
     );
 }
@@ -477,7 +477,7 @@ export function PdfPreview(props: PdfPreviewProps) {
                 ref={element => {
                     scrollContainer = element;
                 }}
-                class="min-h-0 flex-1 overflow-auto bg-neutral-800 p-4"
+                class="min-h-0 flex-1 overflow-auto bg-surface-200 p-4"
                 style={{
                     "touch-action": "pan-x pan-y",
                     "scrollbar-gutter": "stable",
@@ -507,8 +507,8 @@ export function PdfPreview(props: PdfPreviewProps) {
             </div>
 
             <Show when={loadingDocument()}>
-                <div class="absolute inset-0 grid place-items-center bg-neutral-900/60 backdrop-blur-[1px]">
-                    <div class="flex items-center gap-3 rounded-md bg-neutral-900/90 px-4 py-3 text-sm text-neutral-200 shadow-xl">
+                <div class="absolute inset-0 grid place-items-center bg-surface-100/60 backdrop-blur-[1px]">
+                    <div class="flex items-center gap-3 rounded-md bg-surface-100/90 px-4 py-3 text-sm text-surface-800 shadow-xl">
                         <Spinner />
                         Loading PDF…
                     </div>
@@ -516,7 +516,7 @@ export function PdfPreview(props: PdfPreviewProps) {
             </Show>
 
             <Show when={loadError()}>
-                <div class="absolute inset-x-4 bottom-4 rounded-md border border-red-500/40 bg-red-950/90 p-3 text-sm text-red-200 shadow-xl">
+                <div class="absolute inset-x-4 bottom-4 rounded-md border border-red-500/40 bg-danger-surface/90 p-3 text-sm text-danger-text shadow-xl">
                     Failed to load PDF: {loadError()}
                 </div>
             </Show>
@@ -528,13 +528,13 @@ function EmptyState() {
     return (
         <div class="grid h-full place-items-center text-center">
             <div class="max-w-sm">
-                <div class="mx-auto mb-3 grid size-12 place-items-center rounded-lg bg-neutral-700/50 text-2xl">
+                <div class="mx-auto mb-3 grid size-12 place-items-center rounded-lg bg-surface-300/50 text-2xl">
                     PDF
                 </div>
-                <p class="text-sm font-medium text-neutral-300">
+                <p class="text-sm font-medium text-surface-700">
                     No preview yet
                 </p>
-                <p class="mt-1 text-xs text-neutral-500">
+                <p class="mt-1 text-xs text-surface-500">
                     Press Compile to render your LaTeX document here.
                 </p>
             </div>
@@ -544,6 +544,6 @@ function EmptyState() {
 
 export function Spinner() {
     return (
-        <span class="inline-block size-4 animate-spin rounded-full border-2 border-neutral-500 border-t-neutral-100" />
+        <span class="inline-block size-4 animate-spin rounded-full border-2 border-surface-500 border-t-surface-900" />
     );
 }

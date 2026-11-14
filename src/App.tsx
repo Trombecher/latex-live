@@ -385,7 +385,7 @@ export default function App() {
     });
 
     return (
-        <div class="flex h-screen flex-col overflow-hidden bg-neutral-900 text-neutral-200">
+        <div class="flex h-screen flex-col overflow-hidden bg-surface-100 text-surface-800">
             <main class="flex min-h-0 flex-1">
                 <Sidebar
                     workspace={workspace()}
@@ -400,7 +400,7 @@ export default function App() {
                     onDeleted={handleDeleted}
                 />
 
-                <section class="relative flex min-w-0 flex-1 flex-col bg-neutral-900">
+                <section class="relative flex min-w-0 flex-1 flex-col bg-surface-100">
                     <Show
                         when={isTexSelected()}
                         fallback={
@@ -429,8 +429,8 @@ export default function App() {
                     </Show>
 
                     <Show when={loadingFile()}>
-                        <div class="absolute inset-0 grid place-items-center bg-neutral-900/70 backdrop-blur-[1px]">
-                            <div class="flex items-center gap-3 rounded-md bg-neutral-900/90 px-4 py-3 text-sm text-neutral-200 shadow-xl">
+                        <div class="absolute inset-0 grid place-items-center bg-surface-100/70 backdrop-blur-[1px]">
+                            <div class="flex items-center gap-3 rounded-md bg-surface-100/90 px-4 py-3 text-sm text-surface-800 shadow-xl">
                                 <Spinner />
                                 Opening file…
                             </div>
@@ -444,7 +444,7 @@ export default function App() {
                 />
 
                 <section
-                    class="flex min-w-0 flex-col bg-neutral-800"
+                    class="flex min-w-0 flex-col bg-surface-200"
                     style={{width: `${previewRatio() * 100}%`}}
                 >
                     <PreviewToolbar
@@ -476,10 +476,10 @@ function EditorEmptyState(props: {hasWorkspace: boolean}) {
         <div class="grid h-full place-items-center px-6 text-center">
             <div class="max-w-sm">
                 <Logo class="mx-auto mb-4 block size-12 rounded-lg" />
-                <p class="text-sm font-medium text-neutral-300">
+                <p class="text-sm font-medium text-surface-700">
                     {props.hasWorkspace ? "No file selected" : "No folder open"}
                 </p>
-                <p class="mt-1 text-xs leading-relaxed text-neutral-500">
+                <p class="mt-1 text-xs leading-relaxed text-surface-500">
                     {props.hasWorkspace
                         ? "Choose a .tex file from the sidebar to start editing."
                         : "Open a folder to browse your LaTeX project."}

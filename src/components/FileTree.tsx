@@ -281,9 +281,9 @@ export function FileTree(props: FileTreeProps) {
                                 }
                                 class="group flex h-8 w-full items-center gap-2 pr-2 text-left text-sm transition-colors"
                                 classList={{
-                                    "bg-blue-600/20 text-neutral-100":
+                                    "bg-blue-600/20 text-surface-900":
                                         isSelected(),
-                                    "text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200":
+                                    "text-surface-600 hover:bg-surface-200 hover:text-surface-800":
                                         !isSelected(),
                                 }}
                                 style={{
@@ -297,7 +297,7 @@ export function FileTree(props: FileTreeProps) {
                                     fallback={<span class="size-4 shrink-0" />}
                                 >
                                     <ChevronRightIcon
-                                        class="size-4 shrink-0 text-neutral-500 transition-transform"
+                                        class="size-4 shrink-0 text-surface-500 transition-transform"
                                         classList={{
                                             "rotate-90": Boolean(
                                                 expanded()[row.entry.path],
@@ -314,7 +314,7 @@ export function FileTree(props: FileTreeProps) {
                                 </span>
 
                                 <Show when={loading()[row.entry.path]}>
-                                    <span class="size-3 shrink-0 animate-spin rounded-full border border-neutral-500 border-t-neutral-200" />
+                                    <span class="size-3 shrink-0 animate-spin rounded-full border border-surface-500 border-t-surface-800" />
                                 </Show>
 
                                 <Show when={isSelected() && props.dirty}>
@@ -330,26 +330,26 @@ export function FileTree(props: FileTreeProps) {
             </ContextMenu.Trigger>
 
             <ContextMenu.Portal>
-                <ContextMenu.Content class="z-50 min-w-44 rounded-md border border-neutral-700 bg-neutral-800 p-1 text-sm shadow-xl outline-none">
+                <ContextMenu.Content class="z-50 min-w-44 rounded-md border border-surface-300 bg-surface-200 p-1 text-sm shadow-xl outline-none">
                     <ContextMenu.Item
-                        class="flex h-8 cursor-default items-center gap-2 rounded-sm px-2 text-neutral-200 outline-none data-highlighted:bg-neutral-700"
+                        class="flex h-8 cursor-default items-center gap-2 rounded-sm px-2 text-surface-800 outline-none data-highlighted:bg-surface-300"
                         onSelect={startCreate}
                     >
                         <FilePlusIcon
-                            class="size-4 shrink-0 text-neutral-400"
+                            class="size-4 shrink-0 text-surface-600"
                             aria-hidden="true"
                         />
                         <ContextMenu.ItemLabel>New File</ContextMenu.ItemLabel>
                     </ContextMenu.Item>
 
                     <Show when={contextEntry() && !contextEntry()?.isDir}>
-                        <ContextMenu.Separator class="my-1 h-px bg-neutral-700" />
+                        <ContextMenu.Separator class="my-1 h-px bg-surface-300" />
                         <ContextMenu.Item
-                            class="flex h-8 cursor-default items-center gap-2 rounded-sm px-2 text-neutral-200 outline-none data-highlighted:bg-neutral-700"
+                            class="flex h-8 cursor-default items-center gap-2 rounded-sm px-2 text-surface-800 outline-none data-highlighted:bg-surface-300"
                             onSelect={startRename}
                         >
                             <PencilIcon
-                                class="size-4 shrink-0 text-neutral-400"
+                                class="size-4 shrink-0 text-surface-600"
                                 aria-hidden="true"
                             />
                             <ContextMenu.ItemLabel>
@@ -357,7 +357,7 @@ export function FileTree(props: FileTreeProps) {
                             </ContextMenu.ItemLabel>
                         </ContextMenu.Item>
                         <ContextMenu.Item
-                            class="flex h-8 cursor-default items-center gap-2 rounded-sm px-2 text-red-300 outline-none data-highlighted:bg-red-950/60"
+                            class="flex h-8 cursor-default items-center gap-2 rounded-sm px-2 text-danger-text outline-none data-highlighted:bg-danger-surface/60"
                             onSelect={() => void trashEntry()}
                         >
                             <TrashIcon
@@ -395,7 +395,7 @@ function EntryIcon(props: {entry: DirEntry}) {
     if (props.entry.isDir) {
         return (
             <FolderIcon
-                class="size-4 shrink-0 text-neutral-500"
+                class="size-4 shrink-0 text-surface-500"
                 aria-hidden="true"
             />
         );
@@ -403,13 +403,13 @@ function EntryIcon(props: {entry: DirEntry}) {
 
     if (isTexFile(props.entry.path)) {
         return (
-            <span class="grid size-4 shrink-0 place-items-center rounded-xs bg-red-600/80 text-[7px] font-bold text-white">
+            <span class="grid size-4 shrink-0 place-items-center rounded-xs bg-red-600/80 text-[7px] font-bold text-always-white">
                 T
             </span>
         );
     }
 
     return (
-        <FileIcon class="size-4 shrink-0 text-neutral-500" aria-hidden="true" />
+        <FileIcon class="size-4 shrink-0 text-surface-500" aria-hidden="true" />
     );
 }
