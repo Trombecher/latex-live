@@ -433,10 +433,7 @@ fn commit_and_push(root: &Path, message: &str) -> Result<GitActionResult, String
         return Err("Cannot commit while HEAD is detached. Check out a branch first.".to_owned());
     }
 
-    if status.origin_url.is_none() {
-        return Err("Add an origin remote before committing.".to_owned());
-    }
-
+    let has_origin = status.origin_url.is_some();
     let branch = status
         .branch
         .clone()
@@ -469,8 +466,20 @@ fn commit_and_push(root: &Path, message: &str) -> Result<GitActionResult, String
         parts.push("Nothing to commit.".to_owned());
     }
 
-    if !has_staged_changes && had_ahead == 0 {
+    let should_push = has_staged_changes || had_ahead > 0;
+
+    if !should_push {
         parts.push("Working tree is clean.".to_owned());
+
+        return Ok(GitActionResult {
+            message: parts.join(" "),
+            status: read_status(root)?,
+        });
+    }
+
+    // Without a remote the commit stays local.
+    if !has_origin {
+        parts.push("No remote configured, so nothing was pushed.".to_owned());
 
         return Ok(GitActionResult {
             message: parts.join(" "),
@@ -613,7 +622,8 @@ pub async fn git_set_origin(
     .map_err(|error| format!("Git remote task failed: {error}"))?
 }
 
-/// Stage everything, commit, and push the current branch to `origin`.
+/// Stage everything, commit, and push the current branch to `origin` when a
+/// remote is configured. Without a remote the commit stays local.
 #[tauri::command]
 // Tauri passes command arguments by value, so these cannot be borrowed.
 #[allow(clippy::needless_pass_by_value)]

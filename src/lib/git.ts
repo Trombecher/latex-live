@@ -60,6 +60,7 @@ export function setOrigin(url: string): Promise<GitStatus> {
 
 /**
  * Stage every change in the workspace, commit it, and push the current branch.
+ * Without an origin remote the commit stays local.
  */
 export function commitAndPush(message: string): Promise<GitActionResult> {
     return invoke<GitActionResult>("git_commit_push", {message});

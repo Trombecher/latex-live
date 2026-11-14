@@ -156,17 +156,12 @@ export function GitPanel(props: GitPanelProps) {
     const repoReady = () => {
         const current = status();
 
-        return (
-            current?.isRepo === true
-            && current.originUrl !== null
-            && !current.detached
-            && busy() === null
-        );
+        return current?.isRepo === true && !current.detached && busy() === null;
     };
 
     const canCommit = () => repoReady() && commitMessage().trim().length > 0;
 
-    const canPull = () => repoReady();
+    const canPull = () => repoReady() && status()?.originUrl !== null;
 
     const branchLabel = () => {
         const current = status();
@@ -555,7 +550,9 @@ export function GitPanel(props: GitPanelProps) {
                                             />
                                             {busy() === "commit"
                                                 ? "Committing…"
-                                                : "Commit & Push"}
+                                                : current().originUrl
+                                                  ? "Commit & Push"
+                                                  : "Commit"}
                                         </Button>
                                         <Button
                                             class="inline-flex h-8 w-full items-center justify-center gap-2 rounded-md border border-surface-300 bg-surface-200 px-3 text-sm font-medium text-surface-800 transition hover:border-surface-400 hover:bg-surface-300 disabled:cursor-not-allowed disabled:opacity-50"
@@ -574,8 +571,9 @@ export function GitPanel(props: GitPanelProps) {
 
                                     <Show when={current().originUrl === null}>
                                         <p class="mt-1.5 text-xs leading-snug text-surface-500">
-                                            Add an origin remote before
-                                            committing or pulling.
+                                            No origin remote is configured, so
+                                            commits stay local. Add one to
+                                            enable pushing and pulling.
                                         </p>
                                     </Show>
 
