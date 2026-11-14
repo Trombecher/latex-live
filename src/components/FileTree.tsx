@@ -11,12 +11,12 @@ import {For, Show, createEffect, createMemo, createSignal, on} from "solid-js";
 
 import {errorMessage, isTexFile} from "../lib/files";
 import {
-    confirmTrashFile,
+    confirmTrashEntry,
     createFile,
     createFolder,
     listDirectory,
     renameFile,
-    trashFile,
+    trashEntry,
     type DirEntry,
 } from "../lib/workspace";
 import {NameDialog} from "./NameDialog";
@@ -220,23 +220,65 @@ export function FileTree(props: FileTreeProps) {
         }
     };
 
-    const trashEntry = async () => {
+    /**
+     * Whether the selected file is the entry itself or lives inside it.
+     */
+    const selectionInside = (entry: DirEntry) => {
+        const selected = props.selectedPath;
+        if (selected === null) {
+            return false;
+        }
+
+        return (
+            selected === entry.path
+            || (entry.isDir && selected.startsWith(`${entry.path}/`))
+        );
+    };
+
+    /**
+     * Drop cached children, expansion and loading state of a removed folder.
+     */
+    const forgetSubtree = (path: string) => {
+        const isInside = (key: string) =>
+            key === path || key.startsWith(`${path}/`);
+
+        const without = <T,>(record: Record<string, T>) =>
+            Object.fromEntries(
+                Object.entries(record).filter(([key]) => !isInside(key)),
+            );
+
+        setChildren(previous => without(previous));
+        setExpanded(previous => without(previous));
+        setLoading(previous => without(previous));
+    };
+
+    const moveToTrash = async () => {
         const entry = contextEntry();
-        if (!entry || entry.isDir) {
+        if (!entry) {
             return;
         }
 
-        const hasUnsavedChanges =
-            props.selectedPath === entry.path && props.dirty;
+        const hasUnsavedChanges = selectionInside(entry) && props.dirty;
 
-        if (!(await confirmTrashFile(entry.name, hasUnsavedChanges))) {
+        if (
+            !(await confirmTrashEntry(
+                entry.name,
+                entry.isDir,
+                hasUnsavedChanges,
+            ))
+        ) {
             return;
         }
 
         try {
             props.onError(null);
-            await trashFile(entry.path);
+            await trashEntry(entry.path);
             props.onDeleted(entry.path);
+
+            if (entry.isDir) {
+                forgetSubtree(entry.path);
+            }
+
             await refreshDirectory(parentPath(entry.path));
         } catch (cause) {
             props.onError(errorMessage(cause));
@@ -382,23 +424,27 @@ export function FileTree(props: FileTreeProps) {
                         </ContextMenu.ItemLabel>
                     </ContextMenu.Item>
 
-                    <Show when={contextEntry() && !contextEntry()?.isDir}>
+                    <Show when={contextEntry()}>
                         <ContextMenu.Separator class="my-1 h-px border-0 bg-surface-300" />
-                        <ContextMenu.Item
-                            class="flex h-8 cursor-default items-center gap-2 rounded-lg px-2 text-surface-800 outline-none data-highlighted:bg-surface-300"
-                            onSelect={startRename}
-                        >
-                            <PencilIcon
-                                class="size-4 shrink-0 text-surface-600"
-                                aria-hidden="true"
-                            />
-                            <ContextMenu.ItemLabel>
-                                Rename
-                            </ContextMenu.ItemLabel>
-                        </ContextMenu.Item>
+
+                        <Show when={!contextEntry()?.isDir}>
+                            <ContextMenu.Item
+                                class="flex h-8 cursor-default items-center gap-2 rounded-lg px-2 text-surface-800 outline-none data-highlighted:bg-surface-300"
+                                onSelect={startRename}
+                            >
+                                <PencilIcon
+                                    class="size-4 shrink-0 text-surface-600"
+                                    aria-hidden="true"
+                                />
+                                <ContextMenu.ItemLabel>
+                                    Rename
+                                </ContextMenu.ItemLabel>
+                            </ContextMenu.Item>
+                        </Show>
+
                         <ContextMenu.Item
                             class="flex h-8 cursor-default items-center gap-2 rounded-lg px-2 text-danger-text outline-none data-highlighted:bg-danger-surface/60"
-                            onSelect={() => void trashEntry()}
+                            onSelect={() => void moveToTrash()}
                         >
                             <TrashIcon
                                 class="size-4 shrink-0"

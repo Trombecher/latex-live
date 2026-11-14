@@ -107,6 +107,34 @@ pub(crate) fn resolve_existing(root: &Path, relative: &str) -> Result<PathBuf, S
     Ok(resolved)
 }
 
+/// Resolve a path for deletion without following a trailing symlink.
+///
+/// The parent directory is canonicalized so the entry always stays inside the
+/// workspace, but the final component is left alone: deleting a symlink must
+/// move the link itself to the trash instead of the tree it points at.
+fn resolve_entry_for_delete(root: &Path, relative: &str) -> Result<PathBuf, String> {
+    let candidate = join_relative(root, relative)?;
+    let name = candidate
+        .file_name()
+        .ok_or_else(|| "The open folder cannot be deleted.".to_owned())?;
+
+    let parent = candidate
+        .parent()
+        .ok_or_else(|| "The open folder cannot be deleted.".to_owned())?;
+    let parent = fs::canonicalize(parent)
+        .map_err(|error| format!("Failed to resolve {relative:?}: {error}"))?;
+
+    if !parent.starts_with(root) {
+        return Err("Path is outside the open folder.".to_owned());
+    }
+
+    let path = parent.join(name);
+
+    fs::symlink_metadata(&path).map_err(|error| format!("Failed to open {relative:?}: {error}"))?;
+
+    Ok(path)
+}
+
 /// Whether a path is a LaTeX source file.
 pub(crate) fn is_latex_file(path: &Path) -> bool {
     path.extension()
@@ -373,22 +401,20 @@ pub fn rename_workspace_file(
     Ok(relative_path(&root, &target))
 }
 
-/// Move a file inside the workspace to the operating system's trash.
+/// Move a file or folder inside the workspace to the operating system's trash.
+///
+/// Trashing a folder moves the folder and its entire contents, recursively.
 #[tauri::command]
 // Tauri passes command arguments by value, so these cannot be borrowed.
 #[allow(clippy::needless_pass_by_value)]
-pub fn trash_workspace_file(
+pub fn trash_workspace_entry(
     path: String,
     state: tauri::State<'_, WorkspaceState>,
 ) -> Result<(), String> {
     let root = state.root()?;
-    let file = resolve_existing(&root, &path)?;
+    let entry = resolve_entry_for_delete(&root, &path)?;
 
-    if !file.is_file() {
-        return Err("Only files can be deleted.".to_owned());
-    }
-
-    trash::delete(&file).map_err(|error| format!("Failed to delete {path:?}: {error}"))
+    trash::delete(&entry).map_err(|error| format!("Failed to delete {path:?}: {error}"))
 }
 
 #[cfg(test)]
@@ -447,5 +473,14 @@ mod tests {
         assert!(validate_entry_name("..").is_err());
         assert!(validate_entry_name("chapters/intro.tex").is_err());
         assert!(validate_entry_name(r"chapters\intro.tex").is_err());
+    }
+
+    #[test]
+    fn rejects_deleting_the_workspace_root() {
+        let root = fs::canonicalize(std::env::temp_dir()).unwrap();
+
+        assert!(resolve_entry_for_delete(&root, "").is_err());
+        assert!(resolve_entry_for_delete(&root, ".").is_err());
+        assert!(resolve_entry_for_delete(&root, "../").is_err());
     }
 }

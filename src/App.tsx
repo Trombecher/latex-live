@@ -340,7 +340,11 @@ export default function App() {
     };
 
     const handleDeleted = (path: string) => {
-        if (selection()?.path === path) {
+        const selected = selection();
+        if (
+            selected
+            && (selected.path === path || selected.path.startsWith(`${path}/`))
+        ) {
             clearCurrentFile();
         }
     };

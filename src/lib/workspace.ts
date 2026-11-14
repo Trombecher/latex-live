@@ -73,27 +73,36 @@ export function renameFile(path: string, name: string): Promise<string> {
 }
 
 /**
- * Move a file to the operating system's trash.
+ * Move a file or folder to the operating system's trash. Trashing a folder
+ * moves the folder and everything inside it.
  */
-export function trashFile(path: string): Promise<void> {
-    return invoke<void>("trash_workspace_file", {path});
+export function trashEntry(path: string): Promise<void> {
+    return invoke<void>("trash_workspace_entry", {path});
 }
 
-export function confirmTrashFile(
-    fileName: string,
+export function confirmTrashEntry(
+    name: string,
+    isDir: boolean,
     hasUnsavedChanges: boolean,
 ): Promise<boolean> {
-    return confirm(
-        hasUnsavedChanges
-            ? `${fileName} has unsaved changes. Move it to the trash?`
-            : `Move ${fileName} to the trash?`,
-        {
-            title: "Move to trash",
-            kind: "warning",
-            okLabel: "Move to trash",
-            cancelLabel: "Cancel",
-        },
-    );
+    let message: string;
+
+    if (isDir) {
+        message = hasUnsavedChanges
+            ? `You have unsaved changes inside ${name}. Moving the folder to the trash removes the folder and everything inside it.`
+            : `Move ${name} and everything inside it to the trash?`;
+    } else {
+        message = hasUnsavedChanges
+            ? `${name} has unsaved changes. Move it to the trash?`
+            : `Move ${name} to the trash?`;
+    }
+
+    return confirm(message, {
+        title: "Move to trash",
+        kind: "warning",
+        okLabel: "Move to trash",
+        cancelLabel: "Cancel",
+    });
 }
 
 export function confirmDiscardChanges(fileName: string): Promise<boolean> {
