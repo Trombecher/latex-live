@@ -16,9 +16,8 @@ export function FilePlaceholder(props: {entry: DirEntry}) {
                     {fileName(props.entry.path)}
                 </p>
                 <p class="mt-1 text-xs leading-relaxed text-surface-500">
-                    Preview for{" "}
-                    {extension() ? `.${extension()} files` : "this file type"}{" "}
-                    is not available yet.
+                    {extension() ? `.${extension()} files` : "This file type"}{" "}
+                    cannot be opened in the text editor.
                 </p>
             </div>
         </div>

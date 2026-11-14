@@ -13,7 +13,7 @@ import {Sidebar} from "./components/Sidebar";
 import {Spinner} from "./components/Spinner";
 import {compileLatex} from "./lib/compile";
 import {exportPdf} from "./lib/export";
-import {errorMessage, fileName, isTexFile} from "./lib/files";
+import {errorMessage, fileName, isTexFile, isTextFile} from "./lib/files";
 import {
     chooseWorkspaceDirectory,
     confirmDiscardChanges,
@@ -51,6 +51,11 @@ export default function App() {
     const [scaleValue, setScaleValue] = createSignal("page-width");
     const [viewerHandle, setViewerHandle] =
         createSignal<PdfViewerHandle | null>(null);
+
+    const isEditableSelected = () => {
+        const entry = selection();
+        return entry !== null && !entry.isDir && isTextFile(entry.path);
+    };
 
     const isTexSelected = () => {
         const entry = selection();
@@ -133,7 +138,7 @@ export default function App() {
         setSelection(entry);
         setFileError(null);
 
-        if (!isTexFile(entry.path)) {
+        if (!isTextFile(entry.path)) {
             setEditorFile(null);
             savedText = "";
             setDirty(false);
@@ -231,7 +236,7 @@ export default function App() {
         if (
             !editor
             || !entry
-            || !isTexFile(entry.path)
+            || !isTextFile(entry.path)
             || loadingFile()
             || !editorFile()
         ) {
@@ -450,7 +455,7 @@ export default function App() {
 
                 <section class="relative flex min-w-0 flex-1 flex-col bg-surface-100">
                     <Show
-                        when={isTexSelected()}
+                        when={isEditableSelected()}
                         fallback={
                             <Show
                                 when={selection()}
@@ -536,7 +541,7 @@ function EditorEmptyState(props: {hasWorkspace: boolean}) {
                 </p>
                 <p class="mt-1 text-xs leading-relaxed text-surface-500">
                     {props.hasWorkspace
-                        ? "Choose a .tex file from the sidebar to start editing."
+                        ? "Choose a text file from the sidebar to start editing."
                         : "Open a folder to browse your LaTeX project."}
                 </p>
             </div>
