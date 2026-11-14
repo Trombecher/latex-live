@@ -2,7 +2,10 @@ import {Button} from "@kobalte/core/button";
 import {ContextMenu} from "@kobalte/core/context-menu";
 import ChevronRightIcon from "lucide-solid/icons/chevron-right";
 import FileIcon from "lucide-solid/icons/file";
+import FilePlusIcon from "lucide-solid/icons/file-plus";
 import FolderIcon from "lucide-solid/icons/folder";
+import PencilIcon from "lucide-solid/icons/pencil";
+import TrashIcon from "lucide-solid/icons/trash";
 import {For, Show, createEffect, createMemo, createSignal, on} from "solid-js";
 
 import {errorMessage, isTexFile} from "../lib/files";
@@ -329,26 +332,38 @@ export function FileTree(props: FileTreeProps) {
             <ContextMenu.Portal>
                 <ContextMenu.Content class="z-50 min-w-44 rounded-md border border-neutral-700 bg-neutral-800 p-1 text-sm shadow-xl outline-none">
                     <ContextMenu.Item
-                        class="flex h-8 cursor-default items-center rounded-sm px-2 text-neutral-200 outline-none data-highlighted:bg-neutral-700"
+                        class="flex h-8 cursor-default items-center gap-2 rounded-sm px-2 text-neutral-200 outline-none data-highlighted:bg-neutral-700"
                         onSelect={startCreate}
                     >
+                        <FilePlusIcon
+                            class="size-4 shrink-0 text-neutral-400"
+                            aria-hidden="true"
+                        />
                         <ContextMenu.ItemLabel>New File</ContextMenu.ItemLabel>
                     </ContextMenu.Item>
 
                     <Show when={contextEntry() && !contextEntry()?.isDir}>
                         <ContextMenu.Separator class="my-1 h-px bg-neutral-700" />
                         <ContextMenu.Item
-                            class="flex h-8 cursor-default items-center rounded-sm px-2 text-neutral-200 outline-none data-highlighted:bg-neutral-700"
+                            class="flex h-8 cursor-default items-center gap-2 rounded-sm px-2 text-neutral-200 outline-none data-highlighted:bg-neutral-700"
                             onSelect={startRename}
                         >
+                            <PencilIcon
+                                class="size-4 shrink-0 text-neutral-400"
+                                aria-hidden="true"
+                            />
                             <ContextMenu.ItemLabel>
                                 Rename
                             </ContextMenu.ItemLabel>
                         </ContextMenu.Item>
                         <ContextMenu.Item
-                            class="flex h-8 cursor-default items-center rounded-sm px-2 text-red-300 outline-none data-highlighted:bg-red-950/60"
+                            class="flex h-8 cursor-default items-center gap-2 rounded-sm px-2 text-red-300 outline-none data-highlighted:bg-red-950/60"
                             onSelect={() => void trashEntry()}
                         >
+                            <TrashIcon
+                                class="size-4 shrink-0"
+                                aria-hidden="true"
+                            />
                             <ContextMenu.ItemLabel>
                                 Move to Trash
                             </ContextMenu.ItemLabel>
