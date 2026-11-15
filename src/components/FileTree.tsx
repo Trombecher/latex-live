@@ -9,7 +9,9 @@ import PencilIcon from "lucide-solid/icons/pencil";
 import TrashIcon from "lucide-solid/icons/trash";
 import {For, Show, createEffect, createMemo, createSignal, on} from "solid-js";
 
-import {errorMessage, isTexFile} from "../lib/files";
+import {errorMessage} from "../lib/errors";
+import {isTexFile} from "../lib/fileKinds";
+import {parentPath} from "../lib/paths";
 import {
     confirmTrashEntry,
     createFile,
@@ -42,14 +44,6 @@ type NameDialogState =
     | {kind: "create-file"; directory: string}
     | {kind: "create-folder"; directory: string}
     | {kind: "rename"; entry: DirEntry};
-
-/**
- * The containing directory of a relative path, or "" for the root.
- */
-function parentPath(path: string): string {
-    const slash = path.lastIndexOf("/");
-    return slash === -1 ? "" : path.slice(0, slash);
-}
 
 export function FileTree(props: FileTreeProps) {
     const [children, setChildren] = createSignal<Record<string, DirEntry[]>>(

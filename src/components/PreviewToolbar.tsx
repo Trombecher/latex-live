@@ -1,15 +1,15 @@
 import {Button} from "@kobalte/core/button";
-import {Tooltip} from "@kobalte/core/tooltip";
 import ChevronLeftIcon from "lucide-solid/icons/chevron-left";
 import ChevronRightIcon from "lucide-solid/icons/chevron-right";
 import DownloadIcon from "lucide-solid/icons/download";
 import MinusIcon from "lucide-solid/icons/minus";
 import PlayIcon from "lucide-solid/icons/play";
 import PlusIcon from "lucide-solid/icons/plus";
-import {Show, type JSX} from "solid-js";
+import {Show} from "solid-js";
 
 import {MAX_ZOOM, MIN_ZOOM} from "../lib/zoom";
 import {Spinner} from "./Spinner";
+import {IconButton} from "./ui/TooltipButton";
 
 const ZOOM_PRESETS = [
     {value: "auto", label: "Automatic Zoom"},
@@ -182,50 +182,5 @@ export function PreviewToolbar(props: PreviewToolbarProps) {
                 </Show>
             </div>
         </div>
-    );
-}
-
-function IconButton(props: {
-    label: string;
-    disabled?: boolean;
-    onClick: () => void;
-    children: JSX.Element;
-}) {
-    return (
-        <TooltipButton
-            label={props.label}
-            disabled={props.disabled}
-            class="inline-flex size-7 items-center justify-center rounded-md border border-surface-300 bg-surface-200 text-surface-700 transition hover:border-surface-400 hover:bg-surface-300 disabled:cursor-not-allowed disabled:opacity-50 hover:disabled:border-surface-300 hover:disabled:bg-surface-200"
-            onClick={props.onClick}
-        >
-            {props.children}
-        </TooltipButton>
-    );
-}
-
-function TooltipButton(props: {
-    label: string;
-    class: string;
-    disabled?: boolean;
-    onClick: () => void;
-    children: JSX.Element;
-}) {
-    return (
-        <Tooltip openDelay={400}>
-            <Tooltip.Trigger
-                as={Button}
-                class={props.class}
-                disabled={props.disabled}
-                aria-label={props.label}
-                onClick={props.onClick}
-            >
-                {props.children}
-            </Tooltip.Trigger>
-            <Tooltip.Portal>
-                <Tooltip.Content class="z-50 rounded-md border border-surface-300 bg-surface-100 px-2 py-1 text-[11px] text-surface-800 shadow-lg">
-                    {props.label}
-                </Tooltip.Content>
-            </Tooltip.Portal>
-        </Tooltip>
     );
 }

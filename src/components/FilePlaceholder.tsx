@@ -1,6 +1,6 @@
 import FileIcon from "lucide-solid/icons/file";
 
-import {fileExtension, fileName} from "../lib/files";
+import {fileExtension, fileName} from "../lib/paths";
 import type {DirEntry} from "../lib/workspace";
 
 export function FilePlaceholder(props: {entry: DirEntry}) {

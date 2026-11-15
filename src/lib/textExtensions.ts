@@ -1,31 +1,8 @@
-import type {DirEntry} from "./workspace";
-
-/**
- * The final path segment.
- */
-export function fileName(path: string): string {
-    return path.split("/").pop() || path;
-}
-
-/**
- * Lowercase extension without the dot, or an empty string.
- */
-export function fileExtension(path: string): string {
-    const name = fileName(path);
-    const dot = name.lastIndexOf(".");
-    return dot > 0 ? name.slice(dot + 1).toLowerCase() : "";
-}
-
-export function isTexFile(path: string): boolean {
-    const extension = fileExtension(path);
-    return extension === "tex" || extension === "latex";
-}
-
 /**
  * Extensions that the text editor can open. Files without an extension (such as
  * `Makefile` or `.gitignore`) are treated as text as well.
  */
-const TEXT_EXTENSIONS = new Set([
+export const TEXT_EXTENSIONS = new Set([
     // LaTeX and its auxiliary files.
     "tex",
     "latex",
@@ -195,18 +172,3 @@ const TEXT_EXTENSIONS = new Set([
     "eslintrc",
     "babelrc",
 ]);
-
-export function isTextFile(path: string): boolean {
-    const extension = fileExtension(path);
-    return extension === "" || TEXT_EXTENSIONS.has(extension);
-}
-
-export function errorMessage(cause: unknown): string {
-    return typeof cause === "string"
-        ? cause
-        : cause instanceof Error
-          ? cause.message
-          : String(cause);
-}
-
-export type {DirEntry};

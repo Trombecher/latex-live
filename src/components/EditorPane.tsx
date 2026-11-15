@@ -13,7 +13,7 @@ import {
     watchColorScheme,
 } from "../editor/monaco-setup";
 import type {CompileDiagnostic} from "../lib/compile";
-import {isTexFile} from "../lib/files";
+import {isTexFile} from "../lib/fileKinds";
 
 const MARKER_OWNER = "latex-compile";
 

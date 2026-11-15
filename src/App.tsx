@@ -5,19 +5,21 @@ import {Show, createSignal, onCleanup, onMount} from "solid-js";
 import {EditorPane, type EditorFile} from "./components/EditorPane";
 import {ErrorPanel} from "./components/ErrorPanel";
 import {FilePlaceholder} from "./components/FilePlaceholder";
+import {LoadingOverlay} from "./components/LoadingOverlay";
 import {Logo} from "./components/Logo";
 import {PaneSeparator} from "./components/PaneSeparator";
 import {PdfPreview, type PdfViewerHandle} from "./components/PdfPreview";
 import {PreviewToolbar} from "./components/PreviewToolbar";
 import {Sidebar} from "./components/Sidebar";
-import {Spinner} from "./components/Spinner";
 import {
     compileLatex,
     LatexCompileError,
     type CompileDiagnostic,
 } from "./lib/compile";
+import {errorMessage} from "./lib/errors";
 import {exportPdf} from "./lib/export";
-import {errorMessage, fileName, isTexFile, isTextFile} from "./lib/files";
+import {isTexFile, isTextFile} from "./lib/fileKinds";
+import {fileName} from "./lib/paths";
 import {
     chooseWorkspaceDirectory,
     confirmDiscardChanges,
@@ -493,12 +495,7 @@ export default function App() {
                     </Show>
 
                     <Show when={loadingFile()}>
-                        <div class="absolute inset-0 grid place-items-center bg-surface-100/70 backdrop-blur-[1px]">
-                            <div class="flex items-center gap-3 rounded-md bg-surface-100/90 px-4 py-3 text-sm text-surface-800 shadow-xl">
-                                <Spinner />
-                                Opening file…
-                            </div>
-                        </div>
+                        <LoadingOverlay label="Opening file…" />
                     </Show>
                 </section>
 

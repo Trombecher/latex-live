@@ -7,8 +7,9 @@ import {Show, createSignal} from "solid-js";
 
 import type {DirEntry} from "../lib/workspace";
 import {FileTree} from "./FileTree";
-import {GitPanel} from "./GitPanel";
+import {GitPanel} from "./git/GitPanel";
 import {Logo} from "./Logo";
+import {secondaryButton} from "./ui/buttonStyles";
 
 interface SidebarProps {
     workspace: {name: string; root: string} | null;
@@ -68,7 +69,7 @@ export function Sidebar(props: SidebarProps) {
 
                 <div class="shrink-0 border-b border-surface-300 p-2">
                     <Button
-                        class="inline-flex h-8 w-full items-center justify-center gap-2 rounded-md border border-surface-300 bg-surface-200 px-3 text-sm font-medium text-surface-800 transition hover:border-surface-400 hover:bg-surface-300"
+                        class={`${secondaryButton} h-8 w-full px-3 text-sm`}
                         onClick={props.onOpenFolder}
                     >
                         <FolderOpenIcon class="size-4" aria-hidden="true" />

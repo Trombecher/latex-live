@@ -2,6 +2,8 @@ import {Button} from "@kobalte/core/button";
 import {Dialog} from "@kobalte/core/dialog";
 import {Show, createEffect, createSignal, createUniqueId, on} from "solid-js";
 
+import {outlineButton, primaryButton} from "./ui/buttonStyles";
+
 interface NameDialogProps {
     open: boolean;
     title: string;
@@ -110,7 +112,7 @@ export function NameDialog(props: NameDialogProps) {
 
                         <div class="mt-4 flex justify-end gap-2">
                             <Button
-                                class="inline-flex h-8 items-center rounded-md border border-surface-300 px-3 text-sm text-surface-700 transition hover:border-surface-400 hover:bg-surface-200"
+                                class={`${outlineButton} h-8 px-3 text-sm`}
                                 onClick={props.onClose}
                             >
                                 Cancel
@@ -118,7 +120,7 @@ export function NameDialog(props: NameDialogProps) {
                             <Button
                                 type="submit"
                                 disabled={props.busy || !value().trim()}
-                                class="inline-flex h-8 items-center rounded-md bg-blue-600 px-3 text-sm font-medium text-always-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                class={`${primaryButton} h-8 px-3 text-sm`}
                             >
                                 {props.busy ? "Working…" : props.confirmLabel}
                             </Button>

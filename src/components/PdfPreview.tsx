@@ -9,7 +9,7 @@ import {
     type PDFDocumentProxy,
 } from "../lib/pdfjs";
 import {clampZoom} from "../lib/zoom";
-import {Spinner} from "./Spinner";
+import {LoadingOverlay} from "./LoadingOverlay";
 
 const WHEEL_ZOOM_SENSITIVITY = 0.0025;
 const ZOOM_DRAWING_DELAY = 400;
@@ -619,12 +619,10 @@ export function PdfPreview(props: PdfPreviewProps) {
             </Show>
 
             <Show when={loadingDocument()}>
-                <div class="absolute inset-0 grid place-items-center bg-surface-100/60 backdrop-blur-[1px]">
-                    <div class="flex items-center gap-3 rounded-md bg-surface-100/90 px-4 py-3 text-sm text-surface-800 shadow-xl">
-                        <Spinner />
-                        Loading PDF…
-                    </div>
-                </div>
+                <LoadingOverlay
+                    backdropClass="bg-surface-100/60"
+                    label="Loading PDF…"
+                />
             </Show>
 
             <Show when={loadError()}>
