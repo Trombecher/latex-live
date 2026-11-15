@@ -13,14 +13,10 @@ import {
     watchColorScheme,
 } from "../editor/monaco-setup";
 import type {CompileDiagnostic} from "../lib/compile";
+import type {EditorFile} from "../lib/createFileSession";
 import {isTexFile} from "../lib/fileKinds";
 
 const MARKER_OWNER = "latex-compile";
-
-export interface EditorFile {
-    path: string;
-    text: string;
-}
 
 interface EditorPaneProps {
     file: EditorFile | null;

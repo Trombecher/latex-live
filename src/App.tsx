@@ -1,193 +1,55 @@
-import {join} from "@tauri-apps/api/path";
 import type * as monaco from "monaco-editor/editor";
-import {Show, createSignal, onCleanup, onMount} from "solid-js";
+import {createSignal, onCleanup, onMount} from "solid-js";
 
-import {EditorPane, type EditorFile} from "./components/EditorPane";
-import {ErrorPanel} from "./components/ErrorPanel";
-import {FilePlaceholder} from "./components/FilePlaceholder";
-import {LoadingOverlay} from "./components/LoadingOverlay";
-import {Logo} from "./components/Logo";
-import {PaneSeparator} from "./components/PaneSeparator";
-import {PdfPreview} from "./components/PdfPreview";
-import {PreviewToolbar} from "./components/PreviewToolbar";
+import {EditorArea} from "./components/EditorArea";
+import {PreviewPane} from "./components/PreviewPane";
 import {Sidebar} from "./components/Sidebar";
-import {
-    compileLatex,
-    LatexCompileError,
-    type CompileDiagnostic,
-} from "./lib/compile";
+import {createCompiler} from "./lib/createCompiler";
+import {createFileSession} from "./lib/createFileSession";
+import {createPdfUrl} from "./lib/createPdfUrl";
 import {errorMessage} from "./lib/errors";
-import {exportPdf} from "./lib/export";
-import {isTexFile, isTextFile} from "./lib/fileKinds";
+import {isTexFile} from "./lib/fileKinds";
 import {fileName} from "./lib/paths";
 import {
     chooseWorkspaceDirectory,
-    confirmDiscardChanges,
     listDirectory,
     openWorkspace,
-    readFile,
-    writeFile,
-    type DirEntry,
     type WorkspaceInfo,
 } from "./lib/workspace";
-import {type PdfViewerHandle} from "./pdf/createPdfViewer";
 
 export default function App() {
     let editor: monaco.editor.IStandaloneCodeEditor | undefined;
-    let currentPdfUrl: string | null = null;
-    let previousPdfUrl: string | null = null;
-    let pdfBytes: Uint8Array | null = null;
-    let savedText = "";
-    let readGeneration = 0;
-    let pendingSave: Promise<void> | null = null;
 
     const [workspace, setWorkspace] = createSignal<WorkspaceInfo | null>(null);
-    const [selection, setSelection] = createSignal<DirEntry | null>(null);
-    const [editorFile, setEditorFile] = createSignal<EditorFile | null>(null);
-    const [dirty, setDirty] = createSignal(false);
-    const [loadingFile, setLoadingFile] = createSignal(false);
-    const [fileError, setFileError] = createSignal<string | null>(null);
 
-    const [compiling, setCompiling] = createSignal(false);
-    const [pdfUrl, setPdfUrl] = createSignal<string | null>(null);
-    const [error, setError] = createSignal<string | null>(null);
-    const [diagnostics, setDiagnostics] = createSignal<CompileDiagnostic[]>([]);
-    const [pageCount, setPageCount] = createSignal(0);
-    const [pageNumber, setPageNumber] = createSignal(1);
-    const [previewRatio, setPreviewRatio] = createSignal(0.5);
-    const [zoom, setZoom] = createSignal(1);
-    const [scaleValue, setScaleValue] = createSignal("page-width");
-    const [viewerHandle, setViewerHandle] =
-        createSignal<PdfViewerHandle | null>(null);
+    const pdfUrl = createPdfUrl();
 
-    const isEditableSelected = () => {
-        const entry = selection();
-        return entry !== null && !entry.isDir && isTextFile(entry.path);
-    };
+    const fileSession = createFileSession({
+        editor: () => editor,
+        onPreviewReset: () => compiler.reset(),
+    });
 
     const isTexSelected = () => {
-        const entry = selection();
+        const entry = fileSession.selection();
         return entry !== null && !entry.isDir && isTexFile(entry.path);
     };
 
     const canCompile = () =>
-        isTexSelected() && !loadingFile() && editorFile() !== null;
+        isTexSelected()
+        && !fileSession.loadingFile()
+        && fileSession.editorFile() !== null;
 
-    const replacePdfUrl = (url: string | null) => {
-        // The viewer may still lazily fetch pages from the previous document,
-        // so keep the immediately previous URL alive until the next compile.
-        if (previousPdfUrl) {
-            URL.revokeObjectURL(previousPdfUrl);
-            previousPdfUrl = null;
-        }
-
-        if (!url) {
-            if (currentPdfUrl) {
-                URL.revokeObjectURL(currentPdfUrl);
-                currentPdfUrl = null;
-            }
-        } else {
-            previousPdfUrl = currentPdfUrl;
-            currentPdfUrl = url;
-        }
-
-        setPdfUrl(url);
-    };
-
-    const resetPreview = () => {
-        pdfBytes = null;
-        replacePdfUrl(null);
-        setError(null);
-        setDiagnostics([]);
-        setPageCount(0);
-        setPageNumber(1);
-        setZoom(1);
-        setScaleValue("page-width");
-    };
-
-    const clearCurrentFile = () => {
-        readGeneration += 1;
-        setSelection(null);
-        setEditorFile(null);
-        savedText = "";
-        setDirty(false);
-        setLoadingFile(false);
-        resetPreview();
-    };
-
-    const confirmDiscard = async (): Promise<boolean> => {
-        if (pendingSave) {
-            await pendingSave;
-        }
-
-        const entry = selection();
-        if (!dirty() || !entry) {
-            return true;
-        }
-
-        return confirmDiscardChanges(fileName(entry.path));
-    };
-
-    const selectEntry = async (entry: DirEntry) => {
-        if (entry.isDir) {
-            return;
-        }
-
-        const current = selection();
-        if (current?.path === entry.path) {
-            return;
-        }
-
-        if (!(await confirmDiscard())) {
-            return;
-        }
-
-        const generation = ++readGeneration;
-
-        setSelection(entry);
-        setFileError(null);
-
-        if (!isTextFile(entry.path)) {
-            setEditorFile(null);
-            savedText = "";
-            setDirty(false);
-            setLoadingFile(false);
-            resetPreview();
-            return;
-        }
-
-        setLoadingFile(true);
-
-        try {
-            const text = await readFile(entry.path);
-
-            if (generation !== readGeneration) {
-                return;
-            }
-
-            savedText = text;
-            setEditorFile({path: entry.path, text});
-            setDirty(false);
-            resetPreview();
-        } catch (cause) {
-            if (generation !== readGeneration) {
-                return;
-            }
-
-            setSelection(null);
-            setEditorFile(null);
-            savedText = "";
-            setDirty(false);
-            setFileError(errorMessage(cause));
-        } finally {
-            if (generation === readGeneration) {
-                setLoadingFile(false);
-            }
-        }
-    };
+    const compiler = createCompiler({
+        editor: () => editor,
+        path: () => fileSession.selection()?.path ?? null,
+        workspaceRoot: () => workspace()?.root ?? null,
+        canCompile,
+        replacePdfUrl: pdfUrl.replace,
+        setFileError: fileSession.setFileError,
+    });
 
     const openFolder = async () => {
-        if (!(await confirmDiscard())) {
+        if (!(await fileSession.confirmDiscard())) {
             return;
         }
 
@@ -199,8 +61,8 @@ export default function App() {
 
             const info = await openWorkspace(path);
 
-            clearCurrentFile();
-            setFileError(null);
+            fileSession.clearCurrentFile();
+            fileSession.setFileError(null);
             setWorkspace(info);
 
             const main = info.entries.find(
@@ -209,171 +71,19 @@ export default function App() {
             );
 
             if (main) {
-                await selectEntry(main);
+                await fileSession.selectEntry(main);
             }
         } catch (cause) {
-            setFileError(errorMessage(cause));
+            fileSession.setFileError(errorMessage(cause));
         }
-    };
-
-    /**
-     * Replace the whole editor buffer as a single undoable edit, keeping the
-     * caret roughly in place.
-     */
-    const replaceEditorText = (text: string) => {
-        const model = editor?.getModel();
-        if (!editor || !model) {
-            return;
-        }
-
-        const position = editor.getPosition();
-        const offset = position ? model.getOffsetAt(position) : 0;
-
-        editor.pushUndoStop();
-        editor.executeEdits("tex-fmt", [
-            {range: model.getFullModelRange(), text},
-        ]);
-        editor.pushUndoStop();
-
-        editor.setPosition(
-            model.getPositionAt(Math.min(offset, model.getValueLength())),
-        );
-    };
-
-    const save = async (): Promise<void> => {
-        const entry = selection();
-        if (
-            !editor
-            || !entry
-            || !isTextFile(entry.path)
-            || loadingFile()
-            || !editorFile()
-        ) {
-            return;
-        }
-
-        const text = editor.getValue();
-
-        try {
-            const saved = await writeFile(entry.path, text);
-
-            if (selection()?.path !== entry.path) {
-                return;
-            }
-
-            savedText = saved;
-
-            // The backend formats LaTeX before writing. Only mirror that in the
-            // editor when the buffer has not changed during the save.
-            if (saved !== text && editor.getValue() === text) {
-                replaceEditorText(saved);
-            }
-
-            setDirty(editor.getValue() !== savedText);
-            setFileError(null);
-        } catch (cause) {
-            setFileError(errorMessage(cause));
-        }
-    };
-
-    const saveIfDirty = () => {
-        if (!dirty() || pendingSave) {
-            return;
-        }
-
-        const promise = save();
-        pendingSave = promise;
-        void promise.finally(() => {
-            if (pendingSave === promise) {
-                pendingSave = null;
-            }
-        });
-    };
-
-    /**
-     * Save pending editor changes before a Git operation touches the working
-     * tree. Returns false when the save failed.
-     */
-    const prepareGitAction = async (): Promise<boolean> => {
-        saveIfDirty();
-
-        if (pendingSave) {
-            await pendingSave;
-        }
-
-        return !dirty();
     };
 
     const openGitFile = (path: string) => {
-        void selectEntry({name: fileName(path), path, isDir: false});
-    };
-
-    const compile = async () => {
-        const entry = selection();
-        if (
-            compiling()
-            || !editor
-            || !entry
-            || !isTexFile(entry.path)
-            || !workspace()
-            || loadingFile()
-            || !editorFile()
-        ) {
-            return;
-        }
-
-        setCompiling(true);
-        setError(null);
-        setDiagnostics([]);
-
-        try {
-            const bytes = await compileLatex(editor.getValue(), entry.path);
-            const blob = new Blob([bytes], {type: "application/pdf"});
-
-            pdfBytes = bytes;
-            replacePdfUrl(URL.createObjectURL(blob));
-        } catch (cause) {
-            setError(errorMessage(cause));
-            setDiagnostics(
-                cause instanceof LatexCompileError ? cause.diagnostics : [],
-            );
-        } finally {
-            setCompiling(false);
-        }
-    };
-
-    const handleScaleChange = (scale: number, value: string) => {
-        setZoom(scale);
-        setScaleValue(value);
-    };
-
-    const exportCurrentPdf = async () => {
-        const workspaceInfo = workspace();
-        if (!pdfBytes || !workspaceInfo) {
-            return;
-        }
-
-        const entry = selection();
-        const relativePdf = entry
-            ? entry.path.replace(/\.(tex|latex)$/i, ".pdf")
-            : "document.pdf";
-
-        try {
-            const destination = await exportPdf(
-                await join(workspaceInfo.root, relativePdf),
-                pdfBytes,
-            );
-
-            if (destination) {
-                setFileError(null);
-            }
-        } catch (cause) {
-            setFileError(errorMessage(cause));
-        }
-    };
-
-    const handleEditorChange = (text: string) => {
-        setDirty(text !== savedText);
+        void fileSession.selectEntry({
+            name: fileName(path),
+            path,
+            isDir: false,
+        });
     };
 
     const refreshRootEntries = async () => {
@@ -385,21 +95,13 @@ export default function App() {
         setWorkspace(current => (current ? {...current, entries} : current));
     };
 
-    const handleRenamed = (oldPath: string, newPath: string) => {
-        setSelection(current =>
-            current?.path === oldPath
-                ? {...current, path: newPath, name: fileName(newPath)}
-                : current,
-        );
-    };
-
     const handleDeleted = (path: string) => {
-        const selected = selection();
+        const selected = fileSession.selection();
         if (
             selected
             && (selected.path === path || selected.path.startsWith(`${path}/`))
         ) {
-            clearCurrentFile();
+            fileSession.clearCurrentFile();
         }
     };
 
@@ -412,11 +114,11 @@ export default function App() {
             switch (event.key.toLowerCase()) {
                 case "enter":
                     event.preventDefault();
-                    void compile();
+                    void compiler.compile();
                     break;
                 case "s":
                     event.preventDefault();
-                    void save();
+                    void fileSession.save();
                     break;
                 case "o":
                     event.preventDefault();
@@ -427,7 +129,7 @@ export default function App() {
 
         window.addEventListener("keydown", handleKeyDown);
 
-        const handleWindowBlur = () => saveIfDirty();
+        const handleWindowBlur = () => fileSession.saveIfDirty();
         window.addEventListener("blur", handleWindowBlur);
 
         onCleanup(() => {
@@ -436,124 +138,48 @@ export default function App() {
         });
     });
 
-    onCleanup(() => {
-        if (previousPdfUrl) {
-            URL.revokeObjectURL(previousPdfUrl);
-            previousPdfUrl = null;
-        }
-
-        if (currentPdfUrl) {
-            URL.revokeObjectURL(currentPdfUrl);
-            currentPdfUrl = null;
-        }
-    });
-
     return (
         <div class="flex h-screen flex-col overflow-hidden bg-surface-100 text-surface-800">
             <main class="flex min-h-0 flex-1">
                 <Sidebar
                     workspace={workspace()}
                     entries={workspace()?.entries ?? []}
-                    selectedPath={selection()?.path ?? null}
-                    dirty={dirty()}
-                    error={fileError()}
+                    selectedPath={fileSession.selection()?.path ?? null}
+                    dirty={fileSession.dirty()}
+                    error={fileSession.fileError()}
                     onOpenFolder={() => void openFolder()}
-                    onSelectFile={entry => void selectEntry(entry)}
+                    onSelectFile={entry => void fileSession.selectEntry(entry)}
                     onRefreshRoot={refreshRootEntries}
-                    onRenamed={handleRenamed}
+                    onRenamed={fileSession.renameSelection}
                     onDeleted={handleDeleted}
                     onGitOpenFile={openGitFile}
-                    onBeforeGitAction={prepareGitAction}
+                    onBeforeGitAction={fileSession.prepareGitAction}
                 />
 
-                <section class="relative flex min-w-0 flex-1 flex-col bg-surface-100">
-                    <Show
-                        when={isEditableSelected()}
-                        fallback={
-                            <Show
-                                when={selection()}
-                                fallback={
-                                    <EditorEmptyState
-                                        hasWorkspace={workspace() !== null}
-                                    />
-                                }
-                            >
-                                {entry => <FilePlaceholder entry={entry()} />}
-                            </Show>
-                        }
-                    >
-                        <EditorPane
-                            file={editorFile()}
-                            diagnostics={diagnostics()}
-                            onChange={handleEditorChange}
-                            onSave={() => void save()}
-                            onBlur={saveIfDirty}
-                            onCompile={() => void compile()}
-                            onReady={instance => {
-                                editor = instance;
-                            }}
-                        />
-                    </Show>
-
-                    <Show when={loadingFile()}>
-                        <LoadingOverlay label="Opening file…" />
-                    </Show>
-                </section>
-
-                <PaneSeparator
-                    ratio={previewRatio()}
-                    onChange={setPreviewRatio}
+                <EditorArea
+                    hasWorkspace={workspace() !== null}
+                    selection={fileSession.selection()}
+                    file={fileSession.editorFile()}
+                    diagnostics={compiler.diagnostics()}
+                    loadingFile={fileSession.loadingFile()}
+                    onChange={fileSession.handleEditorChange}
+                    onSave={() => void fileSession.save()}
+                    onBlur={fileSession.saveIfDirty}
+                    onCompile={() => void compiler.compile()}
+                    onReady={instance => {
+                        editor = instance;
+                    }}
                 />
 
-                <section
-                    class="flex min-w-0 flex-col bg-surface-200"
-                    style={{width: `${previewRatio() * 100}%`}}
-                >
-                    <PreviewToolbar
-                        canCompile={canCompile()}
-                        compiling={compiling()}
-                        pageNumber={pageNumber()}
-                        pageCount={pageCount()}
-                        zoom={zoom()}
-                        scaleValue={scaleValue()}
-                        onZoomIn={() => viewerHandle()?.zoomIn()}
-                        onZoomOut={() => viewerHandle()?.zoomOut()}
-                        onScaleChange={value =>
-                            viewerHandle()?.setScaleValue(value)
-                        }
-                        onPreviousPage={() => viewerHandle()?.previousPage()}
-                        onNextPage={() => viewerHandle()?.nextPage()}
-                        onCompile={() => void compile()}
-                        onExport={() => void exportCurrentPdf()}
-                    />
-                    <PdfPreview
-                        url={pdfUrl()}
-                        onReady={handle => setViewerHandle(handle)}
-                        onScaleChange={handleScaleChange}
-                        onPageChange={setPageNumber}
-                        onPageCount={count => setPageCount(count)}
-                    />
-                    <ErrorPanel error={error()} />
-                </section>
+                <PreviewPane
+                    pdfUrl={pdfUrl.url()}
+                    compiling={compiler.compiling()}
+                    canCompile={canCompile()}
+                    error={compiler.error()}
+                    onCompile={() => void compiler.compile()}
+                    onExport={() => void compiler.exportCurrentPdf()}
+                />
             </main>
-        </div>
-    );
-}
-
-function EditorEmptyState(props: {hasWorkspace: boolean}) {
-    return (
-        <div class="grid h-full place-items-center px-6 text-center">
-            <div class="max-w-sm">
-                <Logo class="mx-auto mb-4 block size-12 rounded-lg" />
-                <p class="text-sm font-medium text-surface-700">
-                    {props.hasWorkspace ? "No file selected" : "No folder open"}
-                </p>
-                <p class="mt-1 text-xs leading-relaxed text-surface-500">
-                    {props.hasWorkspace
-                        ? "Choose a text file from the sidebar to start editing."
-                        : "Open a folder to browse your LaTeX project."}
-                </p>
-            </div>
         </div>
     );
 }
