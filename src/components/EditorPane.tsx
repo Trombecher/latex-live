@@ -1,5 +1,11 @@
 import * as monaco from "monaco-editor/editor";
-import {createEffect, onCleanup, onMount} from "solid-js";
+import {
+    createEffect,
+    createSignal,
+    onCleanup,
+    onMount,
+    untrack,
+} from "solid-js";
 
 import {
     monacoThemeName,
@@ -29,14 +35,17 @@ interface EditorPaneProps {
 export function EditorPane(props: EditorPaneProps) {
     let host: HTMLDivElement | undefined;
 
+    // The model is a signal so that effects which depend on it (such as the
+    // diagnostics effect) re-run when the open file is replaced.
+    const [editorModel, setEditorModel] =
+        createSignal<monaco.editor.ITextModel | null>(null);
+
     onMount(() => {
         if (!host) {
             return;
         }
 
         setupMonaco();
-
-        let model: monaco.editor.ITextModel | null = null;
 
         const editor = monaco.editor.create(host, {
             model: null,
@@ -61,20 +70,21 @@ export function EditorPane(props: EditorPaneProps) {
 
         const applyFile = (file: EditorFile | null) => {
             editor.setModel(null);
-            model?.dispose();
-            model = null;
+            untrack(editorModel)?.dispose();
+            setEditorModel(null);
 
             if (!file) {
                 return;
             }
 
-            model = monaco.editor.createModel(
+            const nextModel = monaco.editor.createModel(
                 file.text,
                 isTexFile(file.path) ? "latex" : "plaintext",
                 monaco.Uri.parse(`file:///workspace/${encodeURI(file.path)}`),
             );
 
-            editor.setModel(model);
+            setEditorModel(nextModel);
+            editor.setModel(nextModel);
             editor.setPosition({lineNumber: 1, column: 1});
             editor.setScrollTop(0);
             editor.focus();
@@ -85,7 +95,7 @@ export function EditorPane(props: EditorPaneProps) {
         });
 
         const applyDiagnostics = () => {
-            const target = model;
+            const target = editorModel();
             if (!target) {
                 return;
             }
@@ -149,7 +159,7 @@ export function EditorPane(props: EditorPaneProps) {
             changeSubscription.dispose();
             blurSubscription.dispose();
             editor.setModel(null);
-            model?.dispose();
+            editorModel()?.dispose();
             editor.dispose();
         });
     });
