@@ -69,6 +69,13 @@ Root crate in `src-tauri`. Frameworks and libraries:
 The backend has a LOT of crates (600+) so building and testing is very slow.
 Build more sparingly.
 
+### Styleguide
+
+- Do not write Rust test modules "inline", i.e. in the same file as the source
+  to be tested. Write tests in a submodule but in a **different file**.
+- Use the `mod.rs` file structure for modules that have file-based submodules,
+  and not the `.rs` sidecar file with the directory.
+
 ## Git
 
 **On Windows**, do not stage changes from `src-tauri/Cargo.toml` nor from
