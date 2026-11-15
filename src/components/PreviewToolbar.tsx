@@ -1,32 +1,11 @@
 import {Button} from "@kobalte/core/button";
-import ChevronLeftIcon from "lucide-solid/icons/chevron-left";
-import ChevronRightIcon from "lucide-solid/icons/chevron-right";
 import DownloadIcon from "lucide-solid/icons/download";
-import MinusIcon from "lucide-solid/icons/minus";
 import PlayIcon from "lucide-solid/icons/play";
-import PlusIcon from "lucide-solid/icons/plus";
 import {Show} from "solid-js";
 
-import {MAX_ZOOM, MIN_ZOOM} from "../lib/zoom";
+import {PageControls} from "./pdf/PageControls";
+import {ZoomControls} from "./pdf/ZoomControls";
 import {Spinner} from "./Spinner";
-import {IconButton} from "./ui/TooltipButton";
-
-const ZOOM_PRESETS = [
-    {value: "auto", label: "Automatic Zoom"},
-    {value: "page-actual", label: "Actual Size"},
-    {value: "page-fit", label: "Page Fit"},
-    {value: "page-width", label: "Page Width"},
-    {value: "0.5", label: "50%"},
-    {value: "0.75", label: "75%"},
-    {value: "1", label: "100%"},
-    {value: "1.25", label: "125%"},
-    {value: "1.5", label: "150%"},
-    {value: "2", label: "200%"},
-    {value: "3", label: "300%"},
-    {value: "4", label: "400%"},
-] as const;
-
-const PRESET_VALUES = new Set<string>(ZOOM_PRESETS.map(preset => preset.value));
 
 interface PreviewToolbarProps {
     canCompile: boolean;
@@ -45,18 +24,6 @@ interface PreviewToolbarProps {
 }
 
 export function PreviewToolbar(props: PreviewToolbarProps) {
-    const selectValue = () =>
-        PRESET_VALUES.has(props.scaleValue) ? props.scaleValue : "custom";
-
-    const handleScaleChange = (
-        event: Event & {currentTarget: HTMLSelectElement},
-    ) => {
-        const value = event.currentTarget.value;
-        if (value !== "custom") {
-            props.onScaleChange(value);
-        }
-    };
-
     return (
         <div class="@container flex h-10 shrink-0 items-center justify-between gap-2 border-b border-surface-300 px-3">
             <span class="hidden text-xs font-semibold tracking-wide text-surface-600 uppercase @min-[30rem]:inline">
@@ -65,79 +32,20 @@ export function PreviewToolbar(props: PreviewToolbarProps) {
 
             <div class="flex items-center gap-2">
                 <Show when={props.pageCount > 0}>
-                    <div class="hidden items-center gap-1 @min-[38rem]:flex">
-                        <IconButton
-                            label="Previous page"
-                            disabled={props.pageNumber <= 1}
-                            onClick={props.onPreviousPage}
-                        >
-                            <ChevronLeftIcon
-                                class="size-3.5"
-                                aria-hidden="true"
-                            />
-                        </IconButton>
+                    <PageControls
+                        pageNumber={props.pageNumber}
+                        pageCount={props.pageCount}
+                        onPreviousPage={props.onPreviousPage}
+                        onNextPage={props.onNextPage}
+                    />
 
-                        <span class="inline-flex h-7 min-w-12 items-center justify-center rounded-md border border-surface-300 bg-surface-200 px-1.5 text-[11px] text-surface-700 tabular-nums">
-                            {props.pageNumber} / {props.pageCount}
-                        </span>
-
-                        <IconButton
-                            label="Next page"
-                            disabled={props.pageNumber >= props.pageCount}
-                            onClick={props.onNextPage}
-                        >
-                            <ChevronRightIcon
-                                class="size-3.5"
-                                aria-hidden="true"
-                            />
-                        </IconButton>
-                    </div>
-
-                    <span class="hidden rounded bg-surface-200 px-2 py-1 text-[11px] text-surface-600 @sm:inline-block @min-[38rem]:hidden">
-                        {props.pageCount}{" "}
-                        {props.pageCount === 1 ? "page" : "pages"}
-                    </span>
-
-                    <div class="flex items-center gap-1">
-                        <IconButton
-                            label="Zoom out"
-                            disabled={props.zoom <= MIN_ZOOM + 1e-4}
-                            onClick={props.onZoomOut}
-                        >
-                            <MinusIcon class="size-3.5" aria-hidden="true" />
-                        </IconButton>
-
-                        <span class="inline-flex h-7 min-w-12 items-center justify-center rounded-md px-1.5 text-[11px] text-surface-700 tabular-nums @2xs:hidden">
-                            {Math.round(props.zoom * 100)}%
-                        </span>
-
-                        <select
-                            class="hidden h-7 w-[6.5rem] cursor-pointer rounded-md border border-surface-300 bg-surface-200 px-1.5 text-[11px] text-surface-700 tabular-nums transition hover:border-surface-400 hover:bg-surface-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 @2xs:block"
-                            aria-label="Zoom"
-                            title="Zoom"
-                            value={selectValue()}
-                            onChange={handleScaleChange}
-                        >
-                            <Show when={selectValue() === "custom"}>
-                                <option value="custom">
-                                    {Math.round(props.zoom * 100)}%
-                                </option>
-                            </Show>
-                            {ZOOM_PRESETS.map(preset => (
-                                <option value={preset.value}>
-                                    {preset.label}
-                                </option>
-                            ))}
-                        </select>
-
-                        <IconButton
-                            label="Zoom in"
-                            disabled={props.zoom >= MAX_ZOOM - 1e-4}
-                            onClick={props.onZoomIn}
-                        >
-                            <PlusIcon class="size-3.5" aria-hidden="true" />
-                        </IconButton>
-                    </div>
+                    <ZoomControls
+                        zoom={props.zoom}
+                        scaleValue={props.scaleValue}
+                        onZoomIn={props.onZoomIn}
+                        onZoomOut={props.onZoomOut}
+                        onScaleChange={props.onScaleChange}
+                    />
 
                     <Button
                         class="inline-flex h-7 items-center gap-1.5 rounded-md border border-surface-300 bg-surface-200 px-2.5 text-xs font-medium text-surface-800 transition hover:border-surface-400 hover:bg-surface-300"
