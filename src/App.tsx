@@ -8,7 +8,7 @@ import {FilePlaceholder} from "./components/FilePlaceholder";
 import {LoadingOverlay} from "./components/LoadingOverlay";
 import {Logo} from "./components/Logo";
 import {PaneSeparator} from "./components/PaneSeparator";
-import {PdfPreview, type PdfViewerHandle} from "./components/PdfPreview";
+import {PdfPreview} from "./components/PdfPreview";
 import {PreviewToolbar} from "./components/PreviewToolbar";
 import {Sidebar} from "./components/Sidebar";
 import {
@@ -30,6 +30,7 @@ import {
     type DirEntry,
     type WorkspaceInfo,
 } from "./lib/workspace";
+import {type PdfViewerHandle} from "./pdf/createPdfViewer";
 
 export default function App() {
     let editor: monaco.editor.IStandaloneCodeEditor | undefined;
