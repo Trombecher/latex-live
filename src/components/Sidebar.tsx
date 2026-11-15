@@ -6,7 +6,7 @@ import GitBranchIcon from "lucide-solid/icons/git-branch";
 import {Show, createSignal} from "solid-js";
 
 import type {DirEntry} from "../lib/workspace";
-import {FileTree} from "./FileTree";
+import {FileTree} from "./files/FileTree";
 import {GitPanel} from "./git/GitPanel";
 import {Logo} from "./Logo";
 import {secondaryButton} from "./ui/buttonStyles";
