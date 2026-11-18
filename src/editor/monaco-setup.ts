@@ -4,6 +4,7 @@
 import "monaco-editor/editor/browser/coreCommands";
 import "monaco-editor/editor/contrib/bracketMatching/browser/bracketMatching";
 import "monaco-editor/editor/contrib/clipboard/browser/clipboard";
+import "monaco-editor/editor/contrib/codeAction/browser/codeActionContributions";
 import "monaco-editor/editor/contrib/comment/browser/comment";
 import "monaco-editor/editor/contrib/contextmenu/browser/contextmenu";
 import "monaco-editor/editor/contrib/cursorUndo/browser/cursorUndo";

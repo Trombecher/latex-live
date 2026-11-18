@@ -21,12 +21,14 @@ export default function App() {
     let editor: monaco.editor.IStandaloneCodeEditor | undefined;
 
     const [workspace, setWorkspace] = createSignal<WorkspaceInfo | null>(null);
+    const [spellcheckTrigger, setSpellcheckTrigger] = createSignal(0);
 
     const pdfUrl = createPdfUrl();
 
     const fileSession = createFileSession({
         editor: () => editor,
         onPreviewReset: () => compiler.reset(),
+        onSaved: () => setSpellcheckTrigger(value => value + 1),
     });
 
     const isTexSelected = () => {
@@ -161,6 +163,7 @@ export default function App() {
                     selection={fileSession.selection()}
                     file={fileSession.editorFile()}
                     diagnostics={compiler.diagnostics()}
+                    spellcheckTrigger={spellcheckTrigger()}
                     loadingFile={fileSession.loadingFile()}
                     onChange={fileSession.handleEditorChange}
                     onSave={() => void fileSession.save()}

@@ -2,6 +2,7 @@ import * as monaco from "monaco-editor/editor";
 import {
     createEffect,
     createSignal,
+    on,
     onCleanup,
     onMount,
     untrack,
@@ -12,6 +13,7 @@ import {
     setupMonaco,
     watchColorScheme,
 } from "../editor/monaco-setup";
+import {attachSpellcheck} from "../editor/spellcheck";
 import type {CompileDiagnostic} from "../lib/compile";
 import type {EditorFile} from "../lib/createFileSession";
 import {isTexFile} from "../lib/fileKinds";
@@ -21,6 +23,7 @@ const MARKER_OWNER = "latex-compile";
 interface EditorPaneProps {
     file: EditorFile | null;
     diagnostics: CompileDiagnostic[];
+    spellcheckTrigger: number;
     onChange: (value: string) => void;
     onSave: () => void;
     onBlur: () => void;
@@ -86,6 +89,8 @@ export function EditorPane(props: EditorPaneProps) {
             editor.focus();
         };
 
+        const spellcheck = attachSpellcheck(editor);
+
         const changeSubscription = editor.onDidChangeModelContent(() => {
             props.onChange(editor.getValue());
         });
@@ -150,8 +155,17 @@ export function EditorPane(props: EditorPaneProps) {
             applyDiagnostics();
         });
 
+        // Spellcheck runs after a save, so it never interferes with typing.
+        createEffect(
+            on(
+                () => props.spellcheckTrigger,
+                () => spellcheck.rescan(),
+            ),
+        );
+
         onCleanup(() => {
             unsubscribeColorScheme();
+            spellcheck.dispose();
             changeSubscription.dispose();
             blurSubscription.dispose();
             editor.setModel(null);

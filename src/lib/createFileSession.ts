@@ -26,6 +26,10 @@ interface FileSessionOptions {
      * can drop the PDF belonging to the previous document.
      */
     onPreviewReset: () => void;
+    /**
+     * Called after a document has been written successfully.
+     */
+    onSaved?: () => void;
 }
 
 /**
@@ -181,6 +185,7 @@ export function createFileSession(options: FileSessionOptions) {
 
             setDirty(editor.getValue() !== savedText);
             setFileError(null);
+            options.onSaved?.();
         } catch (cause) {
             setFileError(errorMessage(cause));
         }

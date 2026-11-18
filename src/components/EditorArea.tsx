@@ -15,6 +15,7 @@ interface EditorAreaProps {
     selection: DirEntry | null;
     file: EditorFile | null;
     diagnostics: CompileDiagnostic[];
+    spellcheckTrigger: number;
     loadingFile: boolean;
     onChange: (text: string) => void;
     onSave: () => void;
@@ -53,6 +54,7 @@ export function EditorArea(props: EditorAreaProps) {
                 <EditorPane
                     file={props.file}
                     diagnostics={props.diagnostics}
+                    spellcheckTrigger={props.spellcheckTrigger}
                     onChange={props.onChange}
                     onSave={props.onSave}
                     onBlur={props.onBlur}

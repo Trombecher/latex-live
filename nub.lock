@@ -32,10 +32,13 @@ importers:
       solid-js:
         specifier: ^1.9.19
         version: 1.9.19
+      typo-js:
+        specifier: ^2.0.0
+        version: 2.0.0
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.3.5
-        version: 4.3.5(vite@8.3.8)
+        version: 4.3.5(vite@8.3.8(jiti@2.7.0))
       '@tauri-apps/cli':
         specifier: ^2.12.4
         version: 2.12.4
@@ -56,10 +59,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: ^8.3.8
-        version: 8.3.8
+        version: 8.3.8(jiti@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.16
-        version: 2.11.16(solid-js@1.9.19)(vite@8.3.8)
+        version: 2.11.16(solid-js@1.9.19)(vite@8.3.8(jiti@2.7.0))
 
 packages:
 
@@ -1347,6 +1350,10 @@ packages:
     engines: {node: '>=16.20.0'}
     hasBin: true
 
+  typo-js@2.0.0:
+    resolution: {integrity: sha512-sP7w46bByUNKIHzeiWsktNXJRrHtuODQ/xNMw4qICZMG8i3ayUTxwAwYow9zd1TGyLKzLoG4lvu2Cl3EFLZXMw==}
+    engines: {node: '>=20.16'}
+
   update-browserslist-db@1.3.4:
     resolution: {integrity: sha512-t8wonIOdQyOjtPd2VktlBu6QjTVTks6v8bSi7kd0r2Vll8TK1JYDZtRRdbmCHOAMphkZgrzK+L+vXK4pyZ8t4A==}
     hasBin: true
@@ -1971,12 +1978,12 @@ snapshots:
       '@tailwindcss/oxide-win32-arm64-msvc': 4.3.5
       '@tailwindcss/oxide-win32-x64-msvc': 4.3.5
 
-  '@tailwindcss/vite@4.3.5(vite@8.3.8)':
+  '@tailwindcss/vite@4.3.5(vite@8.3.8(jiti@2.7.0))':
     dependencies:
       '@tailwindcss/node': 4.3.5
       '@tailwindcss/oxide': 4.3.5
       tailwindcss: 4.3.5
-      vite: 8.3.8
+      vite: 8.3.8(jiti@2.7.0)
     transitivePeerDependencies:
       - '@tailwindcss/oxide-android-arm-eabi'
       - '@tailwindcss/oxide-win32-ia32-msvc'
@@ -2444,13 +2451,15 @@ snapshots:
       '@typescript/typescript-win32-arm64': 7.0.2
       '@typescript/typescript-win32-x64': 7.0.2
 
+  typo-js@2.0.0: {}
+
   update-browserslist-db@1.3.4(browserslist@4.29.5):
     dependencies:
       browserslist: 4.29.5
       escalade: 3.2.0
       picocolors: 1.1.1
 
-  vite-plugin-solid@2.11.16(solid-js@1.9.19)(vite@8.3.8):
+  vite-plugin-solid@2.11.16(solid-js@1.9.19)(vite@8.3.8(jiti@2.7.0)):
     dependencies:
       '@babel/core': 7.29.13
       '@types/babel__core': 7.20.5
@@ -2458,13 +2467,13 @@ snapshots:
       merge-anything: 5.1.7
       solid-js: 1.9.19
       solid-refresh: 0.6.3(solid-js@1.9.19)
-      vite: 8.3.8
-      vitefu: 1.1.3(vite@8.3.8)
+      vite: 8.3.8(jiti@2.7.0)
+      vitefu: 1.1.3(vite@8.3.8(jiti@2.7.0))
     transitivePeerDependencies:
       - pnpapi
       - supports-color
 
-  vite@8.3.8:
+  vite@8.3.8(jiti@2.7.0):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -2473,9 +2482,10 @@ snapshots:
       tinyglobby: 0.2.17
     optionalDependencies:
       fsevents: 2.3.3
+      jiti: 2.7.0
 
-  vitefu@1.1.3(vite@8.3.8):
+  vitefu@1.1.3(vite@8.3.8(jiti@2.7.0)):
     optionalDependencies:
-      vite: 8.3.8
+      vite: 8.3.8(jiti@2.7.0)
 
   yallist@3.1.1: {}
